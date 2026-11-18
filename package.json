@@ -1,0 +1,14 @@
+{
+  "name": "household-income-spending-tracker",
+  "version": "1.0.0",
+  "description": "Local-first rolling monthly income, outgoings, direct debits, and savings tracker accessible across the local network.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/verify.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "license": "MIT"
+}

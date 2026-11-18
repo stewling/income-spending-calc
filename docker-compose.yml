@@ -1,0 +1,18 @@
+services:
+  household-finance-hub:
+    build: .
+    image: household-finance-hub:latest
+    container_name: household-finance-hub
+    restart: unless-stopped
+    ports:
+      - "5025:5025"
+    environment:
+      - NODE_ENV=production
+      - HOST=0.0.0.0
+      - PORT=5025
+      - DATA_DIR=/app/data
+      # Optional: set your remote server's IP or hostname to show it in the UI modal
+      # - HOST_IP=192.168.1.50
+      # - PUBLIC_URL=http://my-server.local:5025
+    volumes:
+      - ./data:/app/data

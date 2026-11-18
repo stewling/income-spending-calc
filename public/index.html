@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0f172a" />
+  <title>Household Finance Hub — Rolling Monthly Tracker</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-brand">
+        <div class="brand-logo" aria-hidden="true">
+          <svg viewBox="0 0 32 32" width="26" height="26" fill="none">
+            <rect width="32" height="32" rx="9" fill="#0f172a" stroke="#38bdf8" stroke-opacity="0.45"/>
+            <path d="M7 20L13 14L18 18L25 10" stroke="#10b981" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="25" cy="10" r="2.2" fill="#34d399"/>
+          </svg>
+        </div>
+        <div>
+          <h1 id="householdTitle">Household Finance Hub</h1>
+          <p class="brand-sub">Local-first rolling monthly cashflow, direct debits &amp; savings</p>
+        </div>
+      </div>
+
+      <div class="topbar-controls">
+        <div class="quick-search-box">
+          <input
+            type="search"
+            id="topSearchInput"
+            placeholder="Search past, current or future payments..."
+            aria-label="Quick search across all months"
+          />
+        </div>
+
+        <select id="currencySelect" class="select-compact" aria-label="Currency">
+          <option value="GBP">£ GBP</option>
+          <option value="USD">$ USD</option>
+          <option value="EUR">€ EUR</option>
+        </select>
+
+        <button type="button" id="syncStatusBtn" class="status-pill status-online" title="Local network URLs, cache & backups">
+          <span class="status-dot"></span>
+          <span id="syncStatusText">Local + LAN Synced</span>
+        </button>
+
+        <div class="topbar-actions">
+          <button type="button" id="btnQuickAddIncome" class="btn btn-income">+ Income</button>
+          <button type="button" id="btnQuickAddOutgoing" class="btn btn-outgoing">+ Outgoing / DD</button>
+          <button type="button" id="btnQuickAddSavingsTx" class="btn btn-savings">± Savings</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ROLLING MONTH NAVIGATOR -->
+    <section class="month-navigator" aria-label="Rolling monthly navigation">
+      <div class="month-nav-row">
+        <button type="button" id="btnPrevMonth" class="btn btn-ghost btn-nav" title="Previous month">
+          &#8592; Prev
+        </button>
+
+        <div id="rollingMonthStrip" class="rolling-month-strip" role="tablist" aria-label="Rolling months"></div>
+
+        <button type="button" id="btnNextMonth" class="btn btn-ghost btn-nav" title="Next month">
+          Next &#8594;
+        </button>
+      </div>
+
+      <div class="month-meta-row">
+        <div class="month-active-heading">
+          <span id="selectedMonthLabel" class="month-title-big">November 2026</span>
+          <span id="selectedMonthBadge" class="horizon-badge horizon-current">Current Month</span>
+        </div>
+
+        <div class="month-tools">
+          <label class="inline-field">
+            <span>Jump to month:</span>
+            <input type="month" id="monthPickerInput" aria-label="Jump to any month" />
+          </label>
+          <button type="button" id="btnTodayMonth" class="btn btn-ghost btn-sm">Today</button>
+          <label class="inline-field" title="How weekly direct debits are totalled for each calendar month">
+            <span>Weekly DD calc:</span>
+            <select id="weeklyModeSelect" class="select-compact">
+              <option value="exact">Exact weekdays in month</option>
+              <option value="four_week">Fixed 4 weeks (×4)</option>
+              <option value="annualized">Monthly avg (×52÷12)</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXECUTIVE KPI SUMMARY CARDS -->
+    <section class="kpi-grid" aria-label="Monthly financial summary">
+      <article class="kpi-card kpi-income">
+        <div class="kpi-header">
+          <span class="kpi-label">Total Monthly Income</span>
+          <span class="kpi-tag" id="kpiIncomeCount">0 sources</span>
+        </div>
+        <div class="kpi-value" id="kpiIncomeValue">£0.00</div>
+        <div class="kpi-sub" id="kpiIncomeSub">Monthly £0 • Weekly £0 • One-off £0</div>
+      </article>
+
+      <article class="kpi-card kpi-outgoing">
+        <div class="kpi-header">
+          <span class="kpi-label">Total Monthly Outgoings</span>
+          <span class="kpi-tag" id="kpiOutgoingCount">0 items</span>
+        </div>
+        <div class="kpi-value" id="kpiOutgoingValue">£0.00</div>
+        <div class="kpi-sub" id="kpiOutgoingSub">Monthly DD £0 • Weekly DD £0 • One-off £0</div>
+        <div class="progress-track" title="Paid vs upcoming outgoings for this month">
+          <div id="kpiOutgoingProgress" class="progress-fill progress-outgoing" style="width: 0%"></div>
+        </div>
+        <div class="kpi-footnote" id="kpiOutgoingPaidNote">£0 paid • £0 upcoming</div>
+      </article>
+
+      <article class="kpi-card kpi-leftover">
+        <div class="kpi-header">
+          <span class="kpi-label">Money Left Over</span>
+          <span class="kpi-tag" id="kpiLeftoverPct">0% left</span>
+        </div>
+        <div class="kpi-value" id="kpiLeftoverValue">£0.00</div>
+        <div class="kpi-sub" id="kpiLeftoverSub">Income minus all outgoings</div>
+        <div class="kpi-footnote" id="kpiEssentialNote">Essential: £0 • Flexible: £0</div>
+      </article>
+
+      <article class="kpi-card kpi-savings">
+        <div class="kpi-header">
+          <span class="kpi-label">Can Allocate to Savings</span>
+          <span class="kpi-tag" id="kpiSavingsNetMonth">£0 allocated</span>
+        </div>
+        <div class="kpi-value" id="kpiAllocatableValue">£0.00</div>
+        <div class="kpi-sub" id="kpiAllocatableSub">After safety buffer &amp; this month's transfers</div>
+        <div class="kpi-footnote" id="kpiTotalSavingsFoot">Total Savings &amp; Assets: £0.00</div>
+      </article>
+    </section>
+
+    <!-- VIEW SWITCHER TABS -->
+    <nav class="view-tabs" role="tablist" aria-label="Main workspace views">
+      <button type="button" class="view-tab active" data-tab="overview" role="tab" aria-selected="true">
+        Overview &amp; Monthly Tracker
+      </button>
+      <button type="button" class="view-tab" data-tab="savings" role="tab" aria-selected="false">
+        Savings &amp; Assets
+      </button>
+      <button type="button" class="view-tab" data-tab="search" role="tab" aria-selected="false">
+        Search &amp; Rolling History
+      </button>
+    </nav>
+
+    <!-- TAB 1: OVERVIEW & MONTHLY TRACKER -->
+    <main id="tab-overview" class="tab-panel active">
+      <div class="overview-layout">
+        <!-- LEFT MAIN COLUMN -->
+        <div class="overview-main">
+          <!-- OUTGOINGS CARD -->
+          <section class="panel-card">
+            <div class="panel-header">
+              <div>
+                <h2>Outgoings &amp; Direct Debits</h2>
+                <p class="panel-subtitle" id="outgoingsSubtitle">All monthly DDs, weekly DDs, and one-off payments for this month</p>
+              </div>
+              <button type="button" id="btnAddOutgoingInline" class="btn btn-outgoing btn-sm">+ Add Outgoing</button>
+            </div>
+
+            <div class="filter-chips" id="outgoingFilterChips">
+              <button type="button" class="chip active" data-filter="all">All</button>
+              <button type="button" class="chip" data-filter="monthly">Monthly DDs</button>
+              <button type="button" class="chip" data-filter="weekly">Weekly DDs</button>
+              <button type="button" class="chip" data-filter="one-off">One-Off Payments</button>
+              <button type="button" class="chip" data-filter="pending">Upcoming / Unpaid</button>
+              <button type="button" class="chip" data-filter="paid">Paid</button>
+            </div>
+
+            <div id="outgoingsList" class="entries-list"></div>
+          </section>
+
+          <!-- INCOMES CARD -->
+          <section class="panel-card">
+            <div class="panel-header">
+              <div>
+                <h2>Monthly &amp; One-Off Incomes</h2>
+                <p class="panel-subtitle">Salaries, weekly retainers, bonuses, and one-off receipts</p>
+              </div>
+              <button type="button" id="btnAddIncomeInline" class="btn btn-income btn-sm">+ Add Income</button>
+            </div>
+            <div id="incomesList" class="entries-list"></div>
+          </section>
+        </div>
+
+        <!-- RIGHT SIDEBAR COLUMN -->
+        <aside class="overview-sidebar">
+          <!-- OUTGOINGS VISUAL BREAKDOWN -->
+          <section class="panel-card">
+            <div class="panel-header">
+              <div>
+                <h2>Outgoings Breakdown</h2>
+                <p class="panel-subtitle">By schedule type &amp; spending category</p>
+              </div>
+            </div>
+
+            <div class="breakdown-block">
+              <h3>By Payment Schedule</h3>
+              <div id="scheduleBreakdownBar" class="stacked-bar"></div>
+              <div id="scheduleBreakdownLegend" class="legend-grid"></div>
+            </div>
+
+            <div class="breakdown-block">
+              <h3>By Category</h3>
+              <div id="categoryBreakdownList" class="category-bars"></div>
+            </div>
+          </section>
+
+          <!-- INTERACTIVE SAVINGS ALLOCATOR -->
+          <section class="panel-card allocator-card">
+            <div class="panel-header">
+              <div>
+                <h2>Savings Allocator</h2>
+                <p class="panel-subtitle">Decide how much of this month's leftover cash to move to savings</p>
+              </div>
+            </div>
+
+            <div class="allocator-summary">
+              <div class="alloc-row">
+                <span>Money left over (Income - Outgoings)</span>
+                <strong id="allocLeftover">£0.00</strong>
+              </div>
+              <div class="alloc-row">
+                <label for="safetyBufferInput">Keep current account buffer</label>
+                <input type="number" id="safetyBufferInput" class="input-mini" min="0" step="25" />
+              </div>
+              <div class="alloc-row">
+                <span>Already added to savings this month</span>
+                <strong id="allocAlreadyMoved">£0.00</strong>
+              </div>
+              <div class="alloc-row alloc-highlight">
+                <span>Remaining available to allocate</span>
+                <strong id="allocAvailable">£0.00</strong>
+              </div>
+            </div>
+
+            <div class="allocator-actions-top">
+              <button type="button" id="btnAutoSplitSavings" class="btn btn-ghost btn-sm">Auto-Split Available</button>
+              <button type="button" id="btnClearSplitSavings" class="btn btn-ghost btn-sm">Reset to 0</button>
+            </div>
+
+            <div id="allocatorAccountsList" class="allocator-list"></div>
+
+            <div class="allocator-footer">
+              <div class="alloc-total-planned">
+                <span>Planned allocation:</span>
+                <strong id="allocPlannedTotal">£0.00</strong>
+              </div>
+              <button type="button" id="btnCommitAllocation" class="btn btn-savings btn-full">
+                Transfer Planned Allocation to Savings
+              </button>
+            </div>
+          </section>
+
+          <!-- QUICK SAVINGS & ASSETS SNAPSHOT -->
+          <section class="panel-card">
+            <div class="panel-header">
+              <div>
+                <h2>Savings &amp; Assets Snapshot</h2>
+                <p class="panel-subtitle" id="snapshotSubtitle">Balances through selected month</p>
+              </div>
+              <button type="button" id="btnGoToSavingsTab" class="btn btn-ghost btn-sm">Manage &#8594;</button>
+            </div>
+            <div id="savingsSnapshotList" class="snapshot-list"></div>
+          </section>
+        </aside>
+      </div>
+    </main>
+
+    <!-- TAB 2: SAVINGS & ASSETS -->
+    <section id="tab-savings" class="tab-panel">
+      <div class="savings-banner">
+        <div class="savings-stat">
+          <span class="stat-label" id="savBannerTotalLabel">Total Savings &amp; Assets</span>
+          <strong class="stat-value" id="savBannerTotalValue">£0.00</strong>
+          <span class="stat-sub" id="savBannerLiveNote">Live balance across all pots &amp; assets</span>
+        </div>
+        <div class="savings-stat">
+          <span class="stat-label">Added This Month</span>
+          <strong class="stat-value text-emerald" id="savBannerAddedMonth">+£0.00</strong>
+          <span class="stat-sub">Deposits &amp; monthly allocations</span>
+        </div>
+        <div class="savings-stat">
+          <span class="stat-label">Removed This Month</span>
+          <strong class="stat-value text-rose" id="savBannerRemovedMonth">-£0.00</strong>
+          <span class="stat-sub">Withdrawals &amp; drawdowns</span>
+        </div>
+        <div class="savings-stat">
+          <span class="stat-label">Net Change This Month</span>
+          <strong class="stat-value" id="savBannerNetMonth">£0.00</strong>
+          <span class="stat-sub" id="savBannerMonthName">Selected month</span>
+        </div>
+        <div class="savings-banner-cta">
+          <button type="button" id="btnAddSavingsAccount" class="btn btn-savings">+ Add Account / Asset</button>
+          <button type="button" id="btnRecordSavingsTx" class="btn btn-primary">± Record Deposit / Withdrawal</button>
+        </div>
+      </div>
+
+      <div id="savingsAccountsGrid" class="savings-grid"></div>
+
+      <section class="panel-card ledger-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Savings &amp; Asset Change History</h2>
+            <p class="panel-subtitle">Track every addition, removal, and valuation adjustment over time</p>
+          </div>
+          <div class="ledger-filters">
+            <select id="ledgerAccountFilter" class="select-compact" aria-label="Filter by account">
+              <option value="all">All Accounts &amp; Assets</option>
+            </select>
+            <select id="ledgerScopeFilter" class="select-compact" aria-label="Filter by period">
+              <option value="all">All Months</option>
+              <option value="selected">Selected Month Only</option>
+            </select>
+            <select id="ledgerTypeFilter" class="select-compact" aria-label="Filter by type">
+              <option value="all">All Movements</option>
+              <option value="deposit">Additions (+)</option>
+              <option value="withdrawal">Removals (-)</option>
+              <option value="adjustment">Adjustments</option>
+            </select>
+            <input type="search" id="ledgerSearchInput" class="input-compact" placeholder="Filter history notes..." />
+          </div>
+        </div>
+        <div id="savingsLedgerTableWrap" class="table-wrap"></div>
+      </section>
+    </section>
+
+    <!-- TAB 3: SEARCH & ROLLING HISTORY -->
+    <section id="tab-search" class="tab-panel">
+      <!-- 12-MONTH ROLLING CASHFLOW -->
+      <section class="panel-card">
+        <div class="panel-header">
+          <div>
+            <h2>12-Month Rolling Cashflow &amp; Projection</h2>
+            <p class="panel-subtitle">Past months, current month, and upcoming scheduled months side-by-side (click any month to inspect)</p>
+          </div>
+        </div>
+        <div id="rollingChartContainer" class="rolling-chart"></div>
+        <div id="rollingTableWrap" class="table-wrap"></div>
+      </section>
+
+      <!-- GLOBAL SEARCH ACROSS ALL PAST, CURRENT & FUTURE PAYMENTS -->
+      <section class="panel-card">
+        <div class="panel-header">
+          <div>
+            <h2>Search All Past, Current &amp; Future Payments</h2>
+            <p class="panel-subtitle">Search every recurring direct debit, one-off payment, income, and savings change across all months</p>
+          </div>
+          <div class="search-summary-pills" id="searchSummaryPills"></div>
+        </div>
+
+        <div class="search-controls-grid">
+          <div class="field-group">
+            <label for="globalSearchInput">Keyword</label>
+            <input type="search" id="globalSearchInput" placeholder="e.g. Mortgage, MOT, Christmas, Groceries, ISA..." />
+          </div>
+          <div class="field-group">
+            <label for="searchHorizonFilter">Time Window</label>
+            <select id="searchHorizonFilter">
+              <option value="all">All Months (Past + Current + Future)</option>
+              <option value="past">Past Months Only</option>
+              <option value="current">Current Month Only</option>
+              <option value="future">Future Payments Only</option>
+              <option value="range">Custom Month Range</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="searchKindFilter">Type</label>
+            <select id="searchKindFilter">
+              <option value="all">All Records</option>
+              <option value="outgoing">Outgoings Only</option>
+              <option value="income">Incomes Only</option>
+              <option value="savings">Savings &amp; Asset Changes</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="searchFreqFilter">Frequency</label>
+            <select id="searchFreqFilter">
+              <option value="all">All Frequencies</option>
+              <option value="one-off">One-Off Payment</option>
+              <option value="weekly">Weekly Direct Debit</option>
+              <option value="monthly">Monthly Direct Debit</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="searchCategoryFilter">Category</label>
+            <select id="searchCategoryFilter">
+              <option value="all">All Categories</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="searchStatusFilter">Status</label>
+            <select id="searchStatusFilter">
+              <option value="all">All Statuses</option>
+              <option value="paid">Paid / Completed</option>
+              <option value="pending">Upcoming / Scheduled</option>
+              <option value="skipped">Skipped</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="searchCustomRangeRow" class="search-range-row hidden">
+          <label>From Month: <input type="month" id="searchFromMonth" /></label>
+          <label>To Month: <input type="month" id="searchToMonth" /></label>
+        </div>
+
+        <div id="globalSearchResultsWrap" class="table-wrap"></div>
+      </section>
+    </section>
+  </div>
+
+  <!-- MODAL: ADD / EDIT INCOME OR OUTGOING -->
+  <div id="entryModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="entryModalTitle">Add Outgoing / Direct Debit</h2>
+        <button type="button" class="modal-close" data-close-modal="entryModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="entryForm" class="modal-body">
+        <input type="hidden" id="entryIdInput" />
+
+        <div class="segmented-row">
+          <div class="segmented-group" role="radiogroup" aria-label="Entry kind">
+            <button type="button" class="seg-btn active" data-entry-kind="outgoing">Outgoing / Expense</button>
+            <button type="button" class="seg-btn" data-entry-kind="income">Income</button>
+          </div>
+        </div>
+
+        <div class="segmented-row">
+          <label class="field-label-small">Schedule Frequency</label>
+          <div class="segmented-group" role="radiogroup" aria-label="Frequency">
+            <button type="button" class="seg-btn active" data-entry-freq="monthly">Monthly DD</button>
+            <button type="button" class="seg-btn" data-entry-freq="weekly">Weekly DD</button>
+            <button type="button" class="seg-btn" data-entry-freq="one-off">One-Off</button>
+          </div>
+        </div>
+
+        <div id="entryEditScopeWrap" class="edit-scope-box hidden">
+          <label class="field-label-small">Editing recurring item:</label>
+          <div class="radio-row">
+            <label><input type="radio" name="editScope" value="series" checked /> Update recurring rule for all active months</label>
+            <label><input type="radio" name="editScope" value="month" /> Override amount/note for <span id="editScopeMonthName">this month</span> only</label>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="entryTitleInput">Name / Description *</label>
+            <input type="text" id="entryTitleInput" required placeholder="e.g. Council Tax, Weekly Shop, Car Service" />
+          </div>
+          <div class="field-group">
+            <label for="entryAmountInput">Amount *</label>
+            <input type="number" id="entryAmountInput" required min="0.01" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="entryCategoryInput">Category</label>
+            <input type="text" id="entryCategoryInput" list="categorySuggestions" placeholder="e.g. Housing, Groceries, Salary" />
+            <datalist id="categorySuggestions">
+              <option value="Housing"></option>
+              <option value="Bills & Utilities"></option>
+              <option value="Groceries"></option>
+              <option value="Transport & Health"></option>
+              <option value="Family & Childcare"></option>
+              <option value="Insurance"></option>
+              <option value="Subscriptions & Telecoms"></option>
+              <option value="Leisure & Travel"></option>
+              <option value="Shopping"></option>
+              <option value="Gifts & Celebrations"></option>
+              <option value="Salary"></option>
+              <option value="Freelance"></option>
+              <option value="Bonus"></option>
+              <option value="Refund / Rebate"></option>
+            </datalist>
+          </div>
+
+          <div class="field-group" id="entryEssentialWrap">
+            <label for="entryEssentialSelect">Priority</label>
+            <select id="entryEssentialSelect">
+              <option value="true">Essential / Committed</option>
+              <option value="false">Flexible / Discretionary</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- CONDITIONAL SCHEDULE FIELDS -->
+        <div id="scheduleOneOffFields" class="schedule-box hidden">
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label for="entryOneOffMonthInput">Month *</label>
+              <input type="month" id="entryOneOffMonthInput" />
+            </div>
+            <div class="field-group">
+              <label for="entryOneOffDateInput">Exact Date (optional)</label>
+              <input type="date" id="entryOneOffDateInput" />
+            </div>
+          </div>
+        </div>
+
+        <div id="scheduleWeeklyFields" class="schedule-box hidden">
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="entryDayOfWeekInput">Debited Every</label>
+              <select id="entryDayOfWeekInput">
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5" selected>Friday</option>
+                <option value="6">Saturday</option>
+                <option value="0">Sunday</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="entryWeeklyStartInput">Start Month *</label>
+              <input type="month" id="entryWeeklyStartInput" />
+            </div>
+            <div class="field-group">
+              <label for="entryWeeklyEndInput">End Month (optional)</label>
+              <input type="month" id="entryWeeklyEndInput" />
+            </div>
+          </div>
+        </div>
+
+        <div id="scheduleMonthlyFields" class="schedule-box">
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="entryDayOfMonthInput">Day of Month (1–31)</label>
+              <input type="number" id="entryDayOfMonthInput" min="1" max="31" value="1" />
+            </div>
+            <div class="field-group">
+              <label for="entryMonthlyStartInput">Start Month *</label>
+              <input type="month" id="entryMonthlyStartInput" />
+            </div>
+            <div class="field-group">
+              <label for="entryMonthlyEndInput">End Month (optional)</label>
+              <input type="month" id="entryMonthlyEndInput" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="entryStatusInput">Status in <span id="entryStatusMonthLabel">selected month</span></label>
+            <select id="entryStatusInput">
+              <option value="pending">Upcoming / Scheduled</option>
+              <option value="paid">Paid / Received</option>
+              <option value="skipped">Skipped this month</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="entryNotesInput">Notes (optional)</label>
+            <input type="text" id="entryNotesInput" placeholder="Account ref, bank card, or details" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="entryModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="entrySubmitBtn">Save Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: REMOVE / STOP ENTRY -->
+  <div id="deleteEntryModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="deleteModalTitle">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h2 id="deleteModalTitle">Remove Item</h2>
+        <button type="button" class="modal-close" data-close-modal="deleteEntryModal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteEntryMessage"></p>
+        <div id="deleteRecurringChoices" class="delete-choices hidden">
+          <button type="button" id="btnStopFromMonth" class="btn btn-primary btn-full">
+            Stop from <span id="stopMonthText">this month</span> onwards (keep past history)
+          </button>
+          <button type="button" id="btnDeleteAllMonths" class="btn btn-danger btn-full">
+            Delete completely from all months
+          </button>
+        </div>
+        <div id="deleteOneOffChoices" class="delete-choices hidden">
+          <button type="button" id="btnConfirmOneOffDelete" class="btn btn-danger btn-full">
+            Delete Payment
+          </button>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="deleteEntryModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT SAVINGS ACCOUNT OR ASSET -->
+  <div id="savingsAccountModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="savingsAccountModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="savingsAccountModalTitle">Add Savings Account or Asset</h2>
+        <button type="button" class="modal-close" data-close-modal="savingsAccountModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="savingsAccountForm" class="modal-body">
+        <input type="hidden" id="savAccIdInput" />
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="savAccNameInput">Account / Asset Name *</label>
+            <input type="text" id="savAccNameInput" required placeholder="e.g. Emergency Fund, House Equity, Cash ISA" />
+          </div>
+          <div class="field-group">
+            <label for="savAccTypeInput">Type</label>
+            <select id="savAccTypeInput">
+              <option value="savings">Savings Account</option>
+              <option value="isa">ISA / Tax-Free Savings</option>
+              <option value="investment">Investment / Shares</option>
+              <option value="cash">Cash / Sinking Pot</option>
+              <option value="asset">Physical Asset / Property</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="savAccOpeningInput">Starting / Initial Balance *</label>
+            <input type="number" id="savAccOpeningInput" required step="0.01" placeholder="0.00" />
+          </div>
+          <div class="field-group">
+            <label for="savAccTargetInput">Target Goal (optional, 0 = none)</label>
+            <input type="number" id="savAccTargetInput" min="0" step="0.01" value="0" />
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="field-group">
+            <label for="savAccRateInput">Interest / Growth %</label>
+            <input type="number" id="savAccRateInput" step="0.01" value="4.5" />
+          </div>
+          <div class="field-group">
+            <label for="savAccWeightInput">Auto-Split Weight</label>
+            <input type="number" id="savAccWeightInput" min="0" step="1" value="25" />
+          </div>
+          <div class="field-group">
+            <label for="savAccColorInput">Accent Color</label>
+            <input type="color" id="savAccColorInput" value="#10b981" class="input-color" />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="savAccNotesInput">Notes (optional)</label>
+          <input type="text" id="savAccNotesInput" placeholder="Bank provider, notice period, or asset valuation note" />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="savingsAccountModal">Cancel</button>
+          <button type="submit" class="btn btn-savings">Save Account / Asset</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / REMOVE / ADJUST MONEY IN SAVINGS OR ASSET -->
+  <div id="savingsTxModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="savingsTxModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="savingsTxModalTitle">Record Savings / Asset Change</h2>
+        <button type="button" class="modal-close" data-close-modal="savingsTxModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="savingsTxForm" class="modal-body">
+        <div class="segmented-row">
+          <div class="segmented-group" role="radiogroup" aria-label="Transaction type">
+            <button type="button" class="seg-btn active" data-stx-type="deposit">+ Add Money</button>
+            <button type="button" class="seg-btn" data-stx-type="withdrawal">- Remove Money</button>
+            <button type="button" class="seg-btn" data-stx-type="adjustment">Adjust (+/-)</button>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="stxAccountSelect">Account / Asset *</label>
+            <select id="stxAccountSelect" required></select>
+          </div>
+          <div class="field-group">
+            <label for="stxAmountInput" id="stxAmountLabel">Amount *</label>
+            <input type="number" id="stxAmountInput" required step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="stxDateInput">Date *</label>
+            <input type="date" id="stxDateInput" required />
+          </div>
+          <div class="field-group">
+            <label for="stxCategoryInput">Category</label>
+            <input type="text" id="stxCategoryInput" list="stxCategories" value="Deposit" />
+            <datalist id="stxCategories">
+              <option value="Deposit"></option>
+              <option value="Monthly Allocation"></option>
+              <option value="Withdrawal"></option>
+              <option value="Emergency Spend"></option>
+              <option value="Interest / Dividend"></option>
+              <option value="Valuation Update"></option>
+            </datalist>
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="stxNoteInput">Note / Reason</label>
+          <input type="text" id="stxNoteInput" placeholder="e.g. Moved leftover salary, Paid car repair, ISA growth" />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="savingsTxModal">Cancel</button>
+          <button type="submit" class="btn btn-savings" id="stxSubmitBtn">Save Movement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: LAN NETWORK ACCESS, LOCAL CACHE & BACKUP -->
+  <div id="networkModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="networkModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="networkModalTitle">Local Network Access, Cache &amp; Backups</h2>
+        <button type="button" class="modal-close" data-close-modal="networkModal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="net-section">
+          <h3>Open on Other Devices (Same Wi-Fi / LAN)</h3>
+          <p class="panel-subtitle">Use any URL below on your phone, tablet, or another laptop on your local network to view and edit live:</p>
+          <div id="lanUrlsList" class="lan-url-list"></div>
+        </div>
+
+        <div class="net-section">
+          <h3>Local Storage &amp; Offline Cache Status</h3>
+          <div id="cacheDiagnostics" class="diagnostics-grid"></div>
+          <div class="net-actions-row">
+            <button type="button" id="btnForceSyncNow" class="btn btn-primary btn-sm">Sync Now with Local Server</button>
+          </div>
+        </div>
+
+        <div class="net-section">
+          <h3>Household Settings &amp; Data Backup</h3>
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label for="householdNameInput">Household Name</label>
+              <input type="text" id="householdNameInput" />
+            </div>
+            <div class="field-group" style="justify-content: flex-end;">
+              <button type="button" id="btnSaveHouseholdName" class="btn btn-ghost">Update Title</button>
+            </div>
+          </div>
+
+          <div class="net-actions-row">
+            <a href="/api/export" class="btn btn-ghost btn-sm" download>Download JSON Backup</a>
+            <label class="btn btn-ghost btn-sm file-upload-btn">
+              Import JSON Backup
+              <input type="file" id="importBackupInput" accept="application/json,.json" hidden />
+            </label>
+            <button type="button" id="btnResetSampleData" class="btn btn-ghost btn-sm">Load Sample Data</button>
+            <button type="button" id="btnResetEmptyData" class="btn btn-danger btn-sm">Clear All (Start Blank)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
