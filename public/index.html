@@ -164,6 +164,29 @@
 
     <!-- TAB 1: OVERVIEW & MONTHLY TRACKER -->
     <main id="tab-overview" class="tab-panel active">
+      <!-- JOINT & PERSONAL ACCOUNT BILL COVERAGE & ALLOCATIONS -->
+      <section id="accountCoverageSection" class="panel-card">
+        <div class="panel-header">
+          <div>
+            <h2>Joint &amp; Personal Account Bill Coverage &amp; Allocations</h2>
+            <p class="panel-subtitle">See how much money is needed in your joint and personal accounts to cover bills, and allocate contributions from personal accounts to the joint account</p>
+          </div>
+          <button type="button" id="btnAddMemberTransfer" class="btn btn-primary btn-sm">+ Allocate Personal &#8594; Joint</button>
+        </div>
+
+        <div id="accountCoverageGrid" class="coverage-grid"></div>
+
+        <div id="jointFundingPlanner" class="joint-planner-box"></div>
+
+        <div class="transfers-subblock">
+          <div class="transfers-subhead">
+            <h3>Active Account Allocations &amp; Transfers This Month</h3>
+            <span class="text-muted" id="memberTransfersSubtitle" style="font-size:0.78rem;"></span>
+          </div>
+          <div id="memberTransfersList" class="entries-list"></div>
+        </div>
+      </section>
+
       <div class="overview-layout">
         <!-- LEFT MAIN COLUMN -->
         <div class="overview-main">
@@ -232,7 +255,7 @@
                 <h2>By Member / Payer Account</h2>
                 <p class="panel-subtitle">Who earns, who pays outgoings, and who allocates to savings &amp; assets</p>
               </div>
-              <button type="button" id="btnEditMembersInline" class="btn btn-ghost btn-sm">Setup</button>
+              <button type="button" id="btnEditMembersInline" class="btn btn-ghost btn-sm">Manage / Rename</button>
             </div>
             <div id="memberBreakdownList" class="member-breakdown-list"></div>
           </section>
@@ -924,7 +947,139 @@
             <button type="submit" class="btn btn-primary btn-sm">+ Add Member / Account</button>
           </div>
         </form>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="membersModal">Cancel</button>
+          <button type="button" id="btnSaveAllMembers" class="btn btn-primary">Save Account Names &amp; Close</button>
+        </div>
       </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT PERSONAL -> JOINT ACCOUNT ALLOCATION / TRANSFER -->
+  <div id="memberTransferModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="memberTransferModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="memberTransferModalTitle">Allocate Money Between Accounts</h2>
+        <button type="button" class="modal-close" data-close-modal="memberTransferModal" aria-label="Close">&times;</button>
+      </div>
+      <form id="memberTransferForm" class="modal-body">
+        <input type="hidden" id="mtrIdInput" />
+
+        <div class="segmented-row">
+          <label class="field-label-small">Schedule Frequency</label>
+          <div class="segmented-group" role="radiogroup" aria-label="Transfer frequency">
+            <button type="button" class="seg-btn active" data-mtr-freq="monthly">Monthly Transfer</button>
+            <button type="button" class="seg-btn" data-mtr-freq="weekly">Weekly Transfer</button>
+            <button type="button" class="seg-btn" data-mtr-freq="one-off">One-Off Transfer</button>
+          </div>
+        </div>
+
+        <div id="mtrEditScopeWrap" class="edit-scope-box hidden">
+          <label class="field-label-small">Editing recurring transfer:</label>
+          <div class="radio-row">
+            <label><input type="radio" name="mtrEditScope" value="series" checked /> Update recurring rule for all active months</label>
+            <label><input type="radio" name="mtrEditScope" value="month" /> Override amount/note for <span id="mtrEditScopeMonthName">this month</span> only</label>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="mtrFromMemberSelect">From Account (Personal / Source) *</label>
+            <select id="mtrFromMemberSelect" required></select>
+          </div>
+          <div class="field-group">
+            <label for="mtrToMemberSelect">To Account (Joint / Target) *</label>
+            <select id="mtrToMemberSelect" required></select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="mtrTitleInput">Description *</label>
+            <input type="text" id="mtrTitleInput" required placeholder="e.g. Monthly Joint Bills Contribution" />
+          </div>
+          <div class="field-group">
+            <label for="mtrAmountInput">Amount *</label>
+            <input type="number" id="mtrAmountInput" required min="0.01" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+
+        <div id="mtrOneOffFields" class="schedule-box hidden">
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label for="mtrOneOffMonthInput">Month *</label>
+              <input type="month" id="mtrOneOffMonthInput" />
+            </div>
+            <div class="field-group">
+              <label for="mtrOneOffDateInput">Exact Date (optional)</label>
+              <input type="date" id="mtrOneOffDateInput" />
+            </div>
+          </div>
+        </div>
+
+        <div id="mtrWeeklyFields" class="schedule-box hidden">
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="mtrDayOfWeekInput">Every Weekday</label>
+              <select id="mtrDayOfWeekInput">
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5" selected>Friday</option>
+                <option value="6">Saturday</option>
+                <option value="0">Sunday</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="mtrWeeklyStartInput">Start Month *</label>
+              <input type="month" id="mtrWeeklyStartInput" />
+            </div>
+            <div class="field-group">
+              <label for="mtrWeeklyEndInput">End Month (optional)</label>
+              <input type="month" id="mtrWeeklyEndInput" />
+            </div>
+          </div>
+        </div>
+
+        <div id="mtrMonthlyFields" class="schedule-box">
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="mtrDayOfMonthInput">Day of Month (1–31)</label>
+              <input type="number" id="mtrDayOfMonthInput" min="1" max="31" value="28" />
+            </div>
+            <div class="field-group">
+              <label for="mtrMonthlyStartInput">Start Month *</label>
+              <input type="month" id="mtrMonthlyStartInput" />
+            </div>
+            <div class="field-group">
+              <label for="mtrMonthlyEndInput">End Month (optional)</label>
+              <input type="month" id="mtrMonthlyEndInput" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="mtrStatusInput">Status in <span id="mtrStatusMonthLabel">selected month</span></label>
+            <select id="mtrStatusInput">
+              <option value="pending">Upcoming / Scheduled</option>
+              <option value="paid">Transferred / Completed</option>
+              <option value="skipped">Skipped this month</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="mtrNotesInput">Notes (optional)</label>
+            <input type="text" id="mtrNotesInput" placeholder="Standing order ref or details" />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" data-close-modal="memberTransferModal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="mtrSubmitBtn">Save Allocation</button>
+        </div>
+      </form>
     </div>
   </div>
 

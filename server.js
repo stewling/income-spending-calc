@@ -87,6 +87,14 @@ function normalizeState(raw) {
     memberId: tx && validMemberIds.has(tx.memberId) ? tx.memberId : fallbackMemberId
   }));
 
+  const fallbackJointId = members.find((m) => m.role === 'joint')?.id || fallbackMemberId;
+  const memberTransfers = (Array.isArray(raw.memberTransfers) ? raw.memberTransfers : []).map((tr) => ({
+    ...tr,
+    frequency: ['one-off', 'weekly', 'monthly'].includes(tr?.frequency) ? tr.frequency : 'monthly',
+    fromMemberId: tr && validMemberIds.has(tr.fromMemberId) ? tr.fromMemberId : fallbackMemberId,
+    toMemberId: tr && validMemberIds.has(tr.toMemberId) ? tr.toMemberId : fallbackJointId
+  }));
+
   return {
     version: 1,
     settings: {
@@ -102,6 +110,7 @@ function normalizeState(raw) {
         : base.settings.householdName
     },
     members,
+    memberTransfers,
     entries,
     monthOverrides: raw.monthOverrides && typeof raw.monthOverrides === 'object' && !Array.isArray(raw.monthOverrides)
       ? raw.monthOverrides
@@ -462,7 +471,7 @@ function createBudgetServer(options = {}) {
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
     const cacheControl = path.basename(targetFile) === 'sw.js'
       ? 'no-cache, no-store, must-revalidate'
-      : 'public, max-age=300';
+      : 'no-cache';
 
     try {
       const content = fs.readFileSync(targetFile);

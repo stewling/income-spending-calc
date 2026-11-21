@@ -30,6 +30,7 @@ function createEmptyState() {
       householdName: 'Household Finance Hub'
     },
     members: DEFAULT_MEMBERS.map((m) => ({ ...m })),
+    memberTransfers: [],
     entries: [],
     monthOverrides: {},
     savingsAccounts: [],
@@ -851,6 +852,41 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     }
   ];
 
+  const memberTransfers = [
+    {
+      id: 'mtr_mine_to_joint',
+      fromMemberId: 'mem_mine',
+      toMemberId: 'mem_joint',
+      title: 'Monthly Joint Bills Allocation (Mine)',
+      frequency: 'monthly',
+      amount: 1650,
+      dayOfMonth: 28,
+      dayOfWeek: null,
+      month: null,
+      date: null,
+      startMonth: mMinus3,
+      endMonth: null,
+      notes: 'Monthly transfer into Joint Account for household bills',
+      createdAt: `${mMinus3}-01T09:00:00.000Z`
+    },
+    {
+      id: 'mtr_partner_to_joint',
+      fromMemberId: 'mem_partner',
+      toMemberId: 'mem_joint',
+      title: 'Monthly Joint Bills Allocation (Partner)',
+      frequency: 'monthly',
+      amount: 1200,
+      dayOfMonth: 26,
+      dayOfWeek: null,
+      month: null,
+      date: null,
+      startMonth: mMinus3,
+      endMonth: null,
+      notes: 'Monthly contribution toward mortgage, utilities & childcare',
+      createdAt: `${mMinus3}-01T09:05:00.000Z`
+    }
+  ];
+
   return {
     version: 1,
     settings: {
@@ -860,6 +896,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       householdName: 'Household Finance Hub'
     },
     members,
+    memberTransfers,
     entries,
     monthOverrides,
     savingsAccounts,

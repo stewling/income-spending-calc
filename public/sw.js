@@ -1,4 +1,4 @@
-const CACHE_NAME = 'household-finance-shell-v1';
+const CACHE_NAME = 'household-finance-shell-v2';
 const APP_SHELL_ASSETS = [
   '/',
   '/index.html',
@@ -32,7 +32,7 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/api/')) return;
 
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-cache' })
       .then((res) => {
         if (res && res.ok && url.origin === self.location.origin) {
           const clone = res.clone();

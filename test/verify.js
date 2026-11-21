@@ -79,23 +79,32 @@ async function runTests() {
     const hasWeeklySavings = stateJson.state.savingsTransactions.some((t) => t.frequency === 'weekly');
     assert.ok(hasPastOneOff && hasFutureOneOff && hasWeeklyDd && hasMonthlyDd, 'Seed data must cover past/future one-offs, weekly DD, and monthly DD');
     assert.ok(hasMonthlySavings && hasWeeklySavings, 'Seed data must cover monthly and weekly savings/asset payments');
-    console.log('PASS: Initial seeded state includes members, past/current/future entries, DDs, and recurring savings/asset payments');
+    assert.ok(Array.isArray(stateJson.state.memberTransfers) && stateJson.state.memberTransfers.length >= 2, 'Seed data must include personal-to-joint transfers');
+    console.log('PASS: Initial seeded state includes members, personal-to-joint transfers, past/current/future entries, DDs, and recurring savings/asset payments');
 
-    // 3b. normalizeState backwards compatibility for legacy data without members/memberId/frequency
+    // 3b. normalizeState backwards compatibility for legacy data without members/memberId/frequency/memberTransfers
     const legacyNormalized = normalizeState({
       entries: [{ id: 'leg_1', kind: 'outgoing', title: 'Legacy Bill', frequency: 'monthly', amount: 50 }],
       savingsAccounts: [{ id: 'leg_acc', name: 'Legacy Asset', type: 'asset', openingBalance: 1000 }],
       savingsTransactions: [{ id: 'leg_stx', accountId: 'leg_acc', type: 'deposit', amount: 100, month: nowMonth }]
     });
     assert.ok(legacyNormalized.members.length === 3);
+    assert.ok(Array.isArray(legacyNormalized.memberTransfers) && legacyNormalized.memberTransfers.length === 0);
     assert.equal(legacyNormalized.entries[0].memberId, 'mem_joint');
     assert.equal(legacyNormalized.savingsAccounts[0].memberId, 'mem_joint');
     assert.equal(legacyNormalized.savingsTransactions[0].frequency, 'one-off');
     assert.equal(legacyNormalized.savingsTransactions[0].memberId, 'mem_joint');
-    console.log('PASS: normalizeState upgrades legacy records with default memberId and one-off frequency');
+    console.log('PASS: normalizeState upgrades legacy records with default memberId, memberTransfers, and one-off frequency');
 
-    // 4. PUT /api/state persists custom member, entries with memberId, recurring savings/asset payments, and asset allocation
+    // 4. PUT /api/state persists custom member, renamed existing members, entries with memberId, recurring savings/asset payments, and asset allocation
     const modifiedState = structuredClone(stateJson.state);
+    const mineMember = modifiedState.members.find((m) => m.id === 'mem_mine');
+    const partnerMember = modifiedState.members.find((m) => m.id === 'mem_partner');
+    const jointMember = modifiedState.members.find((m) => m.id === 'mem_joint');
+    assert.ok(mineMember && partnerMember && jointMember, 'Default members should exist');
+    jointMember.name = 'Family Joint Bills';
+    mineMember.name = 'Sam Personal';
+    partnerMember.name = 'Jordan Personal';
     modifiedState.members.push({ id: 'mem_custom', name: 'Alex Card', role: 'personal', color: '#f59e0b' });
     const assetAcc = modifiedState.savingsAccounts.find((a) => a.type === 'asset');
     assert.ok(assetAcc, 'Expected a seeded asset account');
@@ -181,6 +190,19 @@ async function runTests() {
       }
     );
 
+    modifiedState.memberTransfers.push({
+      id: 'test_mtr_custom_joint',
+      fromMemberId: 'mem_custom',
+      toMemberId: 'mem_joint',
+      title: 'Alex Contribution to Joint Bills',
+      frequency: 'monthly',
+      amount: 320,
+      dayOfMonth: 28,
+      startMonth: nowMonth,
+      endMonth: null,
+      notes: 'Monthly bills cover'
+    });
+
     const putRes = await fetch(`${baseUrl}/api/state`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -202,6 +224,9 @@ async function runTests() {
     const reloadedRes = await fetch(`${baseUrl}/api/state`);
     const reloadedJson = await reloadedRes.json();
     assert.equal(reloadedJson.revision, 2);
+    assert.equal(reloadedJson.state.members.find((m) => m.id === 'mem_joint')?.name, 'Family Joint Bills');
+    assert.equal(reloadedJson.state.members.find((m) => m.id === 'mem_mine')?.name, 'Sam Personal');
+    assert.equal(reloadedJson.state.members.find((m) => m.id === 'mem_partner')?.name, 'Jordan Personal');
     assert.ok(reloadedJson.state.members.some((m) => m.id === 'mem_custom'));
     assert.equal(reloadedJson.state.entries.find((e) => e.id === 'test_inc_1')?.memberId, 'mem_custom');
     assert.ok(reloadedJson.state.entries.some((e) => e.id === 'test_out_weekly'));
@@ -209,6 +234,7 @@ async function runTests() {
     assert.ok(reloadedJson.state.savingsTransactions.some((t) => t.id === 'test_stx_dep'));
     assert.equal(reloadedJson.state.savingsTransactions.find((t) => t.id === 'test_stx_asset_monthly')?.frequency, 'monthly');
     assert.ok(reloadedJson.state.savingsTransactions.some((t) => t.id === 'test_stx_with'));
+    assert.equal(reloadedJson.state.memberTransfers.find((t) => t.id === 'test_mtr_custom_joint')?.amount, 320);
 
     const backupFile = JSON.parse(fs.readFileSync(path.join(tempDataDir, 'household-budget.json'), 'utf8'));
     assert.ok(backupFile.entries.some((e) => e.id === 'test_out_future'));

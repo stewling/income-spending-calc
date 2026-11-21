@@ -1539,6 +1539,157 @@ select {
   font-size: 0.88rem;
 }
 
+/* JOINT & PERSONAL ACCOUNT COVERAGE */
+.coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.coverage-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--savings);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.coverage-card.is-shortfall {
+  border-color: rgba(244, 63, 94, 0.45);
+}
+
+.coverage-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.coverage-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.coverage-name {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.coverage-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  background: rgba(11, 17, 32, 0.45);
+  border: 1px solid rgba(40, 53, 77, 0.7);
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
+}
+
+.coverage-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coverage-metric span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.coverage-metric strong {
+  font-size: 0.96rem;
+  font-weight: 800;
+}
+
+.coverage-subline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+.coverage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.joint-planner-box {
+  background: linear-gradient(145deg, rgba(56, 189, 248, 0.08), rgba(79, 70, 229, 0.1));
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.joint-planner-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.joint-planner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.joint-planner-inputs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.joint-alloc-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+.transfers-subblock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transfers-subhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.transfers-subhead h3 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.transfer-arrow {
+  color: var(--savings);
+  font-weight: 800;
+}
+
 /* TOASTS */
 .toast-container {
   position: fixed;

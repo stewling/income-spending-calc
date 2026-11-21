@@ -188,6 +188,8 @@
     entryModalFreq: 'monthly',
     stxModalType: 'deposit',
     stxModalFreq: 'one-off',
+    mtrModalFreq: 'monthly',
+    plannedJointTransfers: {},
     pendingDeleteId: null,
     pendingDeleteKind: 'entry'
   };
@@ -195,6 +197,29 @@
   // --- MEMBER HELPERS ---
   function getMembers(state = runtime.state) {
     return Array.isArray(state?.members) && state.members.length ? state.members : DEFAULT_MEMBERS;
+  }
+
+  function ensureValidClientState(state) {
+    const base = state && typeof state === 'object' && !Array.isArray(state) ? state : {};
+    if (!base.settings || typeof base.settings !== 'object') {
+      base.settings = {
+        currency: 'GBP',
+        weeklyCalcMode: 'exact',
+        safetyBuffer: 250,
+        householdName: 'Household Finance Hub'
+      };
+    }
+    if (!Array.isArray(base.members) || base.members.length === 0) {
+      base.members = DEFAULT_MEMBERS.map((m) => ({ ...m }));
+    }
+    if (!Array.isArray(base.memberTransfers)) base.memberTransfers = [];
+    if (!Array.isArray(base.entries)) base.entries = [];
+    if (!Array.isArray(base.savingsAccounts)) base.savingsAccounts = [];
+    if (!Array.isArray(base.savingsTransactions)) base.savingsTransactions = [];
+    if (!base.monthOverrides || typeof base.monthOverrides !== 'object' || Array.isArray(base.monthOverrides)) {
+      base.monthOverrides = {};
+    }
+    return base;
   }
 
   function getMemberById(memberId, state = runtime.state) {
@@ -231,7 +256,7 @@
       if (cfg.stateKey) runtime[cfg.stateKey] = el.value;
     }
 
-    for (const id of ['entryMemberSelect', 'savAccMemberSelect', 'stxMemberSelect']) {
+    for (const id of ['entryMemberSelect', 'savAccMemberSelect', 'stxMemberSelect', 'mtrFromMemberSelect', 'mtrToMemberSelect']) {
       const el = document.getElementById(id);
       if (!el) continue;
       const prev = el.value;
@@ -297,7 +322,7 @@
     let occurrences = [];
     let multiplier = 1;
     let scheduleLabel = '';
-    const prefix = labelMode === 'savings' ? 'Payment' : 'DD';
+    const prefix = labelMode === 'savings' ? 'Payment' : labelMode === 'transfer' ? 'Transfer' : 'DD';
 
     if (freq === 'one-off') {
       scheduleLabel = item.date ? `One-Off • ${item.date}` : `One-Off • ${formatMonthShort(monthStr)}`;
@@ -371,6 +396,18 @@
     };
   }
 
+  function resolveMemberTransferForMonth(tr, monthStr, state = runtime.state) {
+    const resolved = resolveScheduleItemForMonth(tr, monthStr, state, 'transfer');
+    const members = getMembers(state);
+    const fallbackJoint = members.find((m) => m.role === 'joint') || members[0];
+    return {
+      tr,
+      ...resolved,
+      fromMemberId: tr.fromMemberId || members[0]?.id,
+      toMemberId: tr.toMemberId || fallbackJoint?.id
+    };
+  }
+
   function getActiveSavingsTxsInMonth(monthStr, state = runtime.state, memberFilter = 'all') {
     const list = [];
     for (const tx of state.savingsTransactions || []) {
@@ -436,8 +473,21 @@
         member: m,
         income: 0,
         outgoing: 0,
+        paidOutgoing: 0,
+        upcomingOutgoing: 0,
+        essentialOutgoing: 0,
+        flexibleOutgoing: 0,
         savingsAdded: 0,
         savingsRemoved: 0,
+        transfersIn: 0,
+        transfersOut: 0,
+        neededForBills: 0,
+        neededTotal: 0,
+        neededIncludingTransfersOut: 0,
+        availableFunds: 0,
+        billsShortfall: 0,
+        totalShortfall: 0,
+        leftoverAfterBills: 0,
         leftover: 0
       };
     }
@@ -450,8 +500,15 @@
       const resolved = resolveEntryForMonth(entry, monthStr, state);
       const bucket = byMember[resolved.memberId];
       if (bucket) {
-        if (entry.kind === 'income') bucket.income += resolved.effectiveAmount;
-        else bucket.outgoing += resolved.effectiveAmount;
+        if (entry.kind === 'income') {
+          bucket.income += resolved.effectiveAmount;
+        } else {
+          bucket.outgoing += resolved.effectiveAmount;
+          if (resolved.status === 'paid') bucket.paidOutgoing += resolved.effectiveAmount;
+          else if (resolved.status === 'pending') bucket.upcomingOutgoing += resolved.effectiveAmount;
+          if (entry.essential !== false) bucket.essentialOutgoing += resolved.effectiveAmount;
+          else bucket.flexibleOutgoing += resolved.effectiveAmount;
+        }
       }
       if (memberFilter !== 'all' && resolved.memberId !== memberFilter) continue;
       if (entry.kind === 'income') incomes.push(resolved);
@@ -508,8 +565,29 @@
       else savingsAdjusted += r.effectiveAmount;
     }
 
+    // Personal <-> Joint Account Transfers in monthStr
+    const activeTransfers = [];
+    for (const tr of state.memberTransfers || []) {
+      if (!isItemActiveInMonth(tr, monthStr)) continue;
+      const r = resolveMemberTransferForMonth(tr, monthStr, state);
+      if (r.status !== 'skipped' && r.fromMemberId !== r.toMemberId) {
+        if (byMember[r.toMemberId]) byMember[r.toMemberId].transfersIn += r.effectiveAmount;
+        if (byMember[r.fromMemberId]) byMember[r.fromMemberId].transfersOut += r.effectiveAmount;
+      }
+      if (memberFilter !== 'all' && r.fromMemberId !== memberFilter && r.toMemberId !== memberFilter) continue;
+      activeTransfers.push(r);
+    }
+
     for (const id of Object.keys(byMember)) {
-      byMember[id].leftover = byMember[id].income - byMember[id].outgoing;
+      const b = byMember[id];
+      b.neededForBills = Math.round(b.outgoing * 100) / 100;
+      b.neededTotal = Math.round((b.outgoing + b.savingsAdded) * 100) / 100;
+      b.neededIncludingTransfersOut = Math.round((b.outgoing + b.savingsAdded + b.transfersOut) * 100) / 100;
+      b.availableFunds = Math.round((b.income + b.transfersIn - b.transfersOut) * 100) / 100;
+      b.billsShortfall = Math.round(Math.max(0, b.neededForBills - b.availableFunds) * 100) / 100;
+      b.totalShortfall = Math.round(Math.max(0, b.neededTotal - b.availableFunds) * 100) / 100;
+      b.leftoverAfterBills = Math.round((b.availableFunds - b.neededForBills) * 100) / 100;
+      b.leftover = Math.round((b.availableFunds - b.neededTotal) * 100) / 100;
     }
 
     let totalSavingsAtMonth = 0;
@@ -522,17 +600,26 @@
       totalSavingsLive += getAccountBalanceAtMonth(acc, currentMonth, state);
     }
 
-    const moneyLeftOver = totalIncome - totalOutgoings;
+    const filteredBucket = memberFilter !== 'all' ? byMember[memberFilter] : null;
+    const transfersIn = filteredBucket ? filteredBucket.transfersIn : 0;
+    const transfersOut = filteredBucket ? filteredBucket.transfersOut : 0;
+    const availableIncome = filteredBucket ? filteredBucket.availableFunds : totalIncome;
+    const moneyLeftOver = availableIncome - totalOutgoings;
     const safetyBuffer = Number(state.settings?.safetyBuffer || 0);
     const allocatableSurplus = Math.max(0, moneyLeftOver - safetyBuffer - savingsAdded);
 
     return {
       month: monthStr,
+      memberFilter,
       incomes,
       outgoings,
       activeSavingsTxs,
+      activeTransfers,
       byMember,
       totalIncome,
+      availableIncome,
+      transfersIn,
+      transfersOut,
       incBreakdown,
       totalOutgoings,
       outBreakdown,
@@ -586,6 +673,7 @@
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
+      if (data.state) runtime.state = ensureValidClientState(data.state);
       runtime.revision = data.revision;
       runtime.updatedAt = data.updatedAt;
       runtime.network = data.network || runtime.network;
@@ -612,6 +700,8 @@
   }
 
   function persistChange(toastMessage = null) {
+    runtime.state = ensureValidClientState(runtime.state);
+    runtime.plannedJointTransfers = {};
     writeLocalCache({
       state: runtime.state,
       revision: runtime.revision,
@@ -640,7 +730,7 @@
       }
 
       if (!runtime.state || data.revision !== runtime.revision || forceCheck) {
-        runtime.state = data.state;
+        runtime.state = ensureValidClientState(data.state);
         runtime.revision = data.revision;
         runtime.updatedAt = data.updatedAt;
         runtime.pendingSync = false;
@@ -734,10 +824,16 @@
   }
 
   function renderKpis(summary) {
-    document.getElementById('kpiIncomeCount').textContent = `${summary.incomes.length} source${summary.incomes.length === 1 ? '' : 's'}`;
-    document.getElementById('kpiIncomeValue').textContent = formatMoney(summary.totalIncome);
-    document.getElementById('kpiIncomeSub').textContent =
-      `Monthly ${formatMoney(summary.incBreakdown.monthly)} • Weekly ${formatMoney(summary.incBreakdown.weekly)} • One-off ${formatMoney(summary.incBreakdown['one-off'])}`;
+    const isFiltered = summary.memberFilter && summary.memberFilter !== 'all';
+    const filterName = isFiltered ? (getMemberById(summary.memberFilter)?.name || 'Account') : '';
+
+    document.getElementById('kpiIncomeCount').textContent = isFiltered
+      ? `${filterName}`
+      : `${summary.incomes.length} source${summary.incomes.length === 1 ? '' : 's'}`;
+    document.getElementById('kpiIncomeValue').textContent = formatMoney(summary.availableIncome);
+    document.getElementById('kpiIncomeSub').textContent = isFiltered
+      ? `Direct ${formatMoney(summary.totalIncome)} • Alloc In +${formatMoney(summary.transfersIn)} • Out -${formatMoney(summary.transfersOut)}`
+      : `Monthly ${formatMoney(summary.incBreakdown.monthly)} • Weekly ${formatMoney(summary.incBreakdown.weekly)} • One-off ${formatMoney(summary.incBreakdown['one-off'])}`;
 
     document.getElementById('kpiOutgoingCount').textContent = `${summary.outgoings.length} item${summary.outgoings.length === 1 ? '' : 's'}`;
     document.getElementById('kpiOutgoingValue').textContent = formatMoney(summary.totalOutgoings);
@@ -754,12 +850,12 @@
     const leftEl = document.getElementById('kpiLeftoverValue');
     leftEl.textContent = formatMoney(summary.moneyLeftOver, summary.moneyLeftOver < 0);
     leftEl.className = `kpi-value ${summary.moneyLeftOver >= 0 ? 'text-emerald' : 'text-rose'}`;
-    const pctLeft = summary.totalIncome > 0
-      ? Math.round((summary.moneyLeftOver / summary.totalIncome) * 100)
+    const pctLeft = summary.availableIncome > 0
+      ? Math.round((summary.moneyLeftOver / summary.availableIncome) * 100)
       : 0;
-    document.getElementById('kpiLeftoverPct').textContent = `${pctLeft}% of income`;
+    document.getElementById('kpiLeftoverPct').textContent = `${pctLeft}% of available`;
     document.getElementById('kpiLeftoverSub').textContent =
-      summary.moneyLeftOver >= 0 ? 'Surplus remaining after all outgoings' : 'Deficit — outgoings exceed income';
+      summary.moneyLeftOver >= 0 ? 'Surplus remaining after all outgoings' : 'Deficit — more needed to cover bills';
     document.getElementById('kpiEssentialNote').textContent =
       `Essential ${formatMoney(summary.essentialOutgoings)} • Flexible ${formatMoney(summary.flexibleOutgoings)}`;
 
@@ -833,26 +929,245 @@
 
     el.innerHTML = rows.map((item) => {
       const m = item.member;
-      const netAfterSav = item.leftover - item.savingsAdded;
+      const isActive = runtime.memberFilter === m.id;
+      const activeStyle = isActive
+        ? `border-color:${escapeHtml(m.color || '#38bdf8')};background:rgba(56,189,248,0.08);`
+        : '';
       return `
-        <div class="member-row">
+        <div class="member-row ${isActive ? 'is-active' : ''}" data-member-card="${escapeHtml(m.id)}"${activeStyle ? ` style="${activeStyle}"` : ''}>
           <div class="member-row-head">
             <div class="member-row-title">
               <span class="member-dot" style="background:${escapeHtml(m.color || '#38bdf8')}"></span>
               <span>${escapeHtml(m.name)}</span>
             </div>
-            <button type="button" class="icon-btn" data-filter-member="${escapeHtml(m.id)}" title="Filter view to ${escapeHtml(m.name)}">
-              ${runtime.memberFilter === m.id ? 'Showing' : 'Filter'}
-            </button>
+            <div style="display:flex;gap:4px;">
+              <button type="button" class="icon-btn" data-edit-member="${escapeHtml(m.id)}" title="Rename or edit ${escapeHtml(m.name)}">
+                Rename
+              </button>
+              <button type="button" class="icon-btn" data-filter-member="${escapeHtml(m.id)}" title="Filter view to ${escapeHtml(m.name)}">
+                ${isActive ? 'Showing ✓' : 'Filter'}
+              </button>
+            </div>
           </div>
           <div class="member-row-stats">
-            <div><span>In</span><strong class="text-emerald">${escapeHtml(formatMoney(item.income))}</strong></div>
-            <div><span>Out</span><strong class="text-rose">${escapeHtml(formatMoney(item.outgoing))}</strong></div>
-            <div><span>Left / Sav</span><strong class="${netAfterSav >= 0 ? 'text-sky' : 'text-rose'}">${escapeHtml(formatMoney(item.leftover))} / ${escapeHtml(formatMoney(item.savingsAdded))}</strong></div>
+            <div><span>Available</span><strong class="text-emerald">${escapeHtml(formatMoney(item.availableFunds))}</strong></div>
+            <div><span>Bills Needed</span><strong class="text-rose">${escapeHtml(formatMoney(item.neededForBills))}</strong></div>
+            <div><span>Left / Sav</span><strong class="${item.leftover >= 0 ? 'text-sky' : 'text-rose'}">${escapeHtml(formatMoney(item.leftoverAfterBills, true))} / ${escapeHtml(formatMoney(item.savingsAdded))}</strong></div>
           </div>
         </div>
       `;
     }).join('');
+  }
+
+  function computeJointAutoSplit(shortfall, mode = 'income') {
+    const members = getMembers();
+    const jointMember = members.find((m) => m.role === 'joint') || members[0];
+    const personalMembers = members.filter((m) => m.id !== jointMember?.id);
+    const fullSummary = computeMonthSummary(runtime.selectedMonth, runtime.state, 'all');
+    const result = {};
+
+    if (shortfall <= 0 || !personalMembers.length) {
+      for (const p of personalMembers) result[p.id] = 0;
+      return result;
+    }
+
+    const totalCents = Math.round(shortfall * 100);
+    const weights = personalMembers.map((p) => {
+      if (mode === 'equal') return { id: p.id, weight: 1 };
+      const b = fullSummary.byMember[p.id];
+      return { id: p.id, weight: Math.max(0, b ? (b.income > 0 ? b.income : 0) : 0) };
+    });
+
+    const sumWeight = weights.reduce((s, w) => s + w.weight, 0);
+    const active = sumWeight > 0 ? weights : personalMembers.map((p) => ({ id: p.id, weight: 1 }));
+    const denom = active.reduce((s, w) => s + w.weight, 0) || 1;
+    let allocated = 0;
+
+    active.forEach((w, idx) => {
+      if (idx === active.length - 1) {
+        result[w.id] = Math.max(0, totalCents - allocated) / 100;
+      } else {
+        const share = Math.floor((totalCents * w.weight) / denom);
+        allocated += share;
+        result[w.id] = share / 100;
+      }
+    });
+    return result;
+  }
+
+  function renderAccountCoverageAndTransfers(summary) {
+    const gridEl = document.getElementById('accountCoverageGrid');
+    const plannerEl = document.getElementById('jointFundingPlanner');
+    const listEl = document.getElementById('memberTransfersList');
+    if (!gridEl || !plannerEl || !listEl) return;
+
+    const fullSummary = summary.memberFilter === 'all'
+      ? summary
+      : computeMonthSummary(summary.month, runtime.state, 'all');
+
+    const members = [...getMembers()].sort((a, b) => (a.role === 'joint' ? -1 : 1) - (b.role === 'joint' ? -1 : 1));
+    gridEl.innerHTML = members.map((m) => {
+      const b = fullSummary.byMember[m.id] || {
+        income: 0, outgoing: 0, savingsAdded: 0, transfersIn: 0, transfersOut: 0,
+        neededForBills: 0, neededTotal: 0, availableFunds: 0,
+        billsShortfall: 0, totalShortfall: 0, leftoverAfterBills: 0, leftover: 0
+      };
+      const isJoint = m.role === 'joint';
+      const pct = b.neededForBills > 0
+        ? Math.min(100, Math.round((Math.max(0, b.availableFunds) / b.neededForBills) * 100))
+        : 100;
+
+      let statusPill = '';
+      if (b.billsShortfall > 0) {
+        statusPill = `<span class="status-toggle pending" style="background:var(--outgoing-soft);color:#fda4af;border-color:rgba(244,63,94,0.45);cursor:default;">Needs ${escapeHtml(formatMoney(b.billsShortfall))} for bills</span>`;
+      } else if (b.totalShortfall > 0) {
+        statusPill = `<span class="status-toggle pending" style="cursor:default;">Bills covered • Needs ${escapeHtml(formatMoney(b.totalShortfall))} for savings</span>`;
+      } else {
+        statusPill = `<span class="status-toggle paid" style="cursor:default;">Bills Covered</span>`;
+      }
+
+      return `
+        <article class="coverage-card ${b.billsShortfall > 0 ? 'is-shortfall' : ''}" style="border-top-color:${escapeHtml(m.color || '#38bdf8')}">
+          <div class="coverage-card-head">
+            <div class="coverage-title-wrap">
+              <span class="member-dot" style="background:${escapeHtml(m.color || '#38bdf8')}"></span>
+              <span class="coverage-name">${escapeHtml(m.name)}</span>
+              <span class="badge badge-essential">${isJoint ? 'Joint' : 'Personal'}</span>
+            </div>
+            ${statusPill}
+          </div>
+
+          <div class="coverage-metrics">
+            <div class="coverage-metric">
+              <span>Needed for Bills</span>
+              <strong class="text-rose">${escapeHtml(formatMoney(b.neededForBills))}</strong>
+              <span>+ ${escapeHtml(formatMoney(b.savingsAdded))} sav = ${escapeHtml(formatMoney(b.neededTotal))}</span>
+            </div>
+            <div class="coverage-metric">
+              <span>Available in Account</span>
+              <strong class="${b.billsShortfall > 0 ? 'text-amber' : 'text-emerald'}">${escapeHtml(formatMoney(b.availableFunds))}</strong>
+              <span>After bills: <b class="${b.leftoverAfterBills >= 0 ? 'text-emerald' : 'text-rose'}">${escapeHtml(formatMoney(b.leftoverAfterBills, true))}</b></span>
+            </div>
+          </div>
+
+          <div class="progress-track" title="Bill coverage: ${pct}%">
+            <div class="progress-fill" style="width:${pct}%;background:${b.billsShortfall > 0 ? '#f43f5e' : escapeHtml(m.color || '#10b981')}"></div>
+          </div>
+
+          <div class="coverage-subline">
+            <span>Direct In: ${escapeHtml(formatMoney(b.income))}</span>
+            ${b.transfersIn > 0 ? `<span class="text-emerald">• Alloc In: +${escapeHtml(formatMoney(b.transfersIn))}</span>` : ''}
+            ${b.transfersOut > 0 ? `<span class="text-sky">• Sent to Joint: -${escapeHtml(formatMoney(b.transfersOut))}</span>` : ''}
+            <span>• Net Left: <b class="${b.leftover >= 0 ? 'text-emerald' : 'text-rose'}">${escapeHtml(formatMoney(b.leftover, true))}</b></span>
+          </div>
+
+          <div class="coverage-actions">
+            ${!isJoint ? `<button type="button" class="btn btn-primary btn-sm" data-new-mtr-from="${escapeHtml(m.id)}">Allocate &#8594; Joint</button>` : ''}
+            <button type="button" class="btn btn-outgoing btn-sm" data-pay-from-member="${escapeHtml(m.id)}">+ Pay Bill</button>
+            <button type="button" class="icon-btn" data-filter-member="${escapeHtml(m.id)}">${runtime.memberFilter === m.id ? 'Showing' : 'Filter'}</button>
+          </div>
+        </article>
+      `;
+    }).join('');
+
+    // Joint Account Funding Planner
+    const jointMember = members.find((m) => m.role === 'joint') || members[0];
+    const personalMembers = members.filter((m) => m.id !== jointMember?.id);
+    const jb = fullSummary.byMember[jointMember?.id] || {
+      neededForBills: 0, neededTotal: 0, savingsAdded: 0, income: 0, transfersIn: 0,
+      availableFunds: 0, billsShortfall: 0, totalShortfall: 0, leftover: 0
+    };
+
+    if (!personalMembers.length || !jointMember) {
+      plannerEl.innerHTML = '<div class="text-muted" style="font-size:0.84rem;">Add both a Joint Account and at least one Personal Account in Members &amp; Accounts to plan personal-to-joint allocations.</div>';
+    } else {
+      const hasPlanned = personalMembers.some((p) => runtime.plannedJointTransfers[p.id] !== undefined);
+      if (!hasPlanned) {
+        runtime.plannedJointTransfers = computeJointAutoSplit(jb.totalShortfall, 'income');
+      }
+
+      const statusText = jb.totalShortfall > 0
+        ? `<strong class="text-rose">Additional ${escapeHtml(formatMoney(jb.totalShortfall))} needed</strong> (${escapeHtml(formatMoney(jb.billsShortfall))} for bills + ${escapeHtml(formatMoney(Math.max(0, jb.totalShortfall - jb.billsShortfall)))} for savings)`
+        : `<strong class="text-emerald">Joint Account covered</strong> (+${escapeHtml(formatMoney(jb.leftover))} buffer after ${escapeHtml(formatMoney(jb.neededTotal))} bills &amp; savings)`;
+
+      plannerEl.innerHTML = `
+        <div class="joint-planner-top">
+          <div>
+            <strong>${escapeHtml(jointMember.name)} Funding Planner (${escapeHtml(formatMonthShort(summary.month))})</strong>
+            <div class="text-muted" style="font-size:0.8rem;">
+              Need ${escapeHtml(formatMoney(jb.neededForBills))} for bills (+ ${escapeHtml(formatMoney(jb.savingsAdded))} sav = ${escapeHtml(formatMoney(jb.neededTotal))}) •
+              Have ${escapeHtml(formatMoney(jb.availableFunds))} (Direct ${escapeHtml(formatMoney(jb.income))} + Personal Allocations ${escapeHtml(formatMoney(jb.transfersIn))}) •
+              ${statusText}
+            </div>
+          </div>
+          <div class="joint-planner-actions">
+            <button type="button" id="btnAutoCoverByIncome" class="btn btn-ghost btn-sm">Auto-Cover Shortfall (By Income %)</button>
+            <button type="button" id="btnAutoCoverEqual" class="btn btn-ghost btn-sm">50/50 Equal Split</button>
+          </div>
+        </div>
+        <div class="joint-planner-inputs">
+          ${personalMembers.map((p) => {
+            const val = Number(runtime.plannedJointTransfers[p.id] ?? 0);
+            const pb = fullSummary.byMember[p.id] || { leftover: 0 };
+            return `
+              <label class="joint-alloc-chip">
+                <span class="member-dot" style="background:${escapeHtml(p.color || '#10b981')}"></span>
+                <span>${escapeHtml(p.name)} (left: ${escapeHtml(formatMoney(pb.leftover))}):</span>
+                <input type="number" class="input-mini" min="0" step="0.01" data-joint-alloc-from="${escapeHtml(p.id)}" value="${val.toFixed(2)}" />
+              </label>
+            `;
+          }).join('')}
+          <button type="button" id="btnApplyJointTransfers" class="btn btn-primary btn-sm">
+            Allocate Planned Top-Up to ${escapeHtml(jointMember.name)}
+          </button>
+        </div>
+      `;
+    }
+
+    // Active Personal -> Joint transfers list
+    const transfers = fullSummary.activeTransfers || [];
+    document.getElementById('memberTransfersSubtitle').textContent =
+      `${transfers.length} active transfer(s) in ${formatMonthLong(summary.month)}`;
+
+    if (!transfers.length) {
+      listEl.innerHTML = `<div class="empty-state">No personal-to-joint allocations scheduled in ${escapeHtml(formatMonthLong(summary.month))}. Click <strong>+ Allocate Personal &#8594; Joint</strong> to add a monthly, weekly, or one-off transfer.</div>`;
+    } else {
+      listEl.innerHTML = transfers.map((r) => {
+        const tr = r.tr;
+        const statusText = r.status === 'paid' ? 'Transferred' : r.status === 'skipped' ? 'Skipped' : 'Upcoming';
+        const unitSub = r.freq === 'weekly' && !r.hasAmountOverride
+          ? `${formatMoney(r.baseUnitAmount)}/wk`
+          : r.hasAmountOverride
+            ? `Base ${formatMoney(r.baseUnitAmount)} (edited)`
+            : 'Account Allocation';
+        return `
+          <div class="entry-row ${r.status === 'skipped' ? 'is-skipped' : ''}" data-mtr-id="${escapeHtml(tr.id)}">
+            <div class="entry-main">
+              <div class="entry-title-line">
+                <span class="entry-title">${escapeHtml(tr.title)}</span>
+                <span class="badge badge-${r.freq}">${escapeHtml(r.scheduleLabel)}</span>
+                ${renderMemberBadge(r.fromMemberId)}
+                <span class="transfer-arrow">&#8594;</span>
+                ${renderMemberBadge(r.toMemberId)}
+                ${r.hasAmountOverride ? '<span class="badge badge-override">Month Override</span>' : ''}
+              </div>
+              ${r.note ? `<div class="entry-meta"><span>${escapeHtml(r.note)}</span></div>` : ''}
+            </div>
+            <div class="entry-right">
+              <div class="entry-amount-wrap">
+                <div class="entry-amount text-sky">${escapeHtml(formatMoney(r.effectiveAmount))}</div>
+                <div class="entry-amount-sub">${escapeHtml(unitSub)}</div>
+              </div>
+              <button type="button" class="status-toggle ${r.status}" data-toggle-mtr-status="${escapeHtml(tr.id)}" title="Click to toggle Transferred / Upcoming / Skipped">
+                ${statusText}
+              </button>
+              <button type="button" class="icon-btn" data-edit-mtr="${escapeHtml(tr.id)}">Edit</button>
+              <button type="button" class="icon-btn danger" data-remove-mtr="${escapeHtml(tr.id)}">Remove</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   }
 
   function renderEntriesLists(summary) {
@@ -993,12 +1308,12 @@
     }
 
     const member = getMemberById(selectedMemberId);
-    const stats = fullSummary.byMember[selectedMemberId] || { income: 0, outgoing: 0, savingsAdded: 0, leftover: 0 };
-    const available = Math.max(0, stats.leftover - fullSummary.safetyBuffer - stats.savingsAdded);
+    const stats = fullSummary.byMember[selectedMemberId] || { availableFunds: 0, outgoing: 0, savingsAdded: 0, leftoverAfterBills: 0 };
+    const available = Math.max(0, stats.leftoverAfterBills - fullSummary.safetyBuffer - stats.savingsAdded);
     return {
       sourceMemberId: selectedMemberId,
       label: `Money left over (${member?.name || 'Member'})`,
-      leftover: stats.leftover,
+      leftover: stats.leftoverAfterBills,
       alreadyMoved: stats.savingsAdded,
       safetyBuffer: fullSummary.safetyBuffer,
       available
@@ -1433,7 +1748,7 @@
     let minMonth = shiftMonth(currentMonth, -12);
     let maxMonth = shiftMonth(currentMonth, 12);
 
-    for (const e of [...(state.entries || []), ...(state.savingsTransactions || [])]) {
+    for (const e of [...(state.entries || []), ...(state.savingsTransactions || []), ...(state.memberTransfers || [])]) {
       if (e.month && e.month < minMonth) minMonth = e.month;
       if (e.month && e.month > maxMonth) maxMonth = e.month;
       if (e.startMonth && e.startMonth < minMonth) minMonth = e.startMonth;
@@ -1499,6 +1814,28 @@
           status: r.status,
           amount: Math.abs(r.signedDelta),
           signedAmount: r.signedDelta,
+          note: r.note,
+          entryId: null
+        });
+      }
+
+      for (const tr of state.memberTransfers || []) {
+        if (!isItemActiveInMonth(tr, m)) continue;
+        const r = resolveMemberTransferForMonth(tr, m, state);
+        const toName = getMemberById(r.toMemberId, state)?.name || 'Joint Account';
+        categories.add('Account Transfer');
+        records.push({
+          recordKind: 'savings',
+          month: m,
+          horizon,
+          dateLabel: tr.date || (r.freq === 'monthly' ? `${m}-${pad2(tr.dayOfMonth || 1)}` : m),
+          title: `${tr.title} (→ ${toName})`,
+          category: 'Account Transfer',
+          frequency: r.freq,
+          memberId: r.fromMemberId,
+          status: r.status,
+          amount: r.effectiveAmount,
+          signedAmount: r.effectiveAmount,
           note: r.note,
           entryId: null
         });
@@ -1628,6 +1965,7 @@
     renderMonthNavigator();
     const summary = computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter);
     renderKpis(summary);
+    renderAccountCoverageAndTransfers(summary);
     renderEntriesLists(summary);
     renderOutgoingsBreakdown(summary);
     renderMemberBreakdown(summary);
@@ -1664,7 +2002,7 @@
     document.getElementById('entryEditScopeWrap').classList.toggle('hidden', !(isEditing && isRecurring));
   }
 
-  function openEntryModal({ entryId = null, defaultKind = 'outgoing', defaultFreq = 'monthly' } = {}) {
+  function openEntryModal({ entryId = null, defaultKind = 'outgoing', defaultFreq = 'monthly', defaultMemberId = null } = {}) {
     const form = document.getElementById('entryForm');
     form.reset();
     populateMemberSelects();
@@ -1674,7 +2012,7 @@
     document.querySelector('input[name="editScope"][value="series"]').checked = true;
 
     const members = getMembers();
-    const fallbackMember = runtime.memberFilter !== 'all' ? runtime.memberFilter : (members[0]?.id || 'mem_joint');
+    const fallbackMember = defaultMemberId || (runtime.memberFilter !== 'all' ? runtime.memberFilter : (members[0]?.id || 'mem_joint'));
 
     if (entryId) {
       const entry = runtime.state.entries.find((e) => e.id === entryId);
@@ -1719,9 +2057,12 @@
 
   function openDeleteItemModal(kind, itemId) {
     const isStx = kind === 'stx';
+    const isMtr = kind === 'mtr';
     const item = isStx
       ? (runtime.state.savingsTransactions || []).find((t) => t.id === itemId)
-      : (runtime.state.entries || []).find((e) => e.id === itemId);
+      : isMtr
+        ? (runtime.state.memberTransfers || []).find((t) => t.id === itemId)
+        : (runtime.state.entries || []).find((e) => e.id === itemId);
     if (!item) return;
 
     runtime.pendingDeleteKind = kind;
@@ -1737,13 +2078,87 @@
 
     document.getElementById('deleteModalTitle').textContent = `Remove "${label}"`;
     document.getElementById('deleteEntryMessage').textContent = isRecurring
-      ? `"${label}" is a recurring ${freq} payment. Would you like to stop it starting from ${formatMonthLong(runtime.selectedMonth)} (keeping all earlier months intact), or delete it completely?`
+      ? `"${label}" is a recurring ${freq} ${isMtr ? 'transfer' : 'payment'}. Would you like to stop it starting from ${formatMonthLong(runtime.selectedMonth)} (keeping all earlier months intact), or delete it completely?`
       : `Are you sure you want to delete "${label}" (${formatMoney(item.amount)})?`;
 
     document.getElementById('stopMonthText').textContent = formatMonthLong(runtime.selectedMonth);
     document.getElementById('deleteRecurringChoices').classList.toggle('hidden', !isRecurring);
     document.getElementById('deleteOneOffChoices').classList.toggle('hidden', isRecurring);
     openModal('deleteEntryModal');
+  }
+
+  function syncMtrModalVisibility() {
+    document.querySelectorAll('[data-mtr-freq]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.mtrFreq === runtime.mtrModalFreq);
+    });
+    document.getElementById('mtrOneOffFields').classList.toggle('hidden', runtime.mtrModalFreq !== 'one-off');
+    document.getElementById('mtrWeeklyFields').classList.toggle('hidden', runtime.mtrModalFreq !== 'weekly');
+    document.getElementById('mtrMonthlyFields').classList.toggle('hidden', runtime.mtrModalFreq !== 'monthly');
+
+    const isEditing = Boolean(document.getElementById('mtrIdInput').value);
+    const isRecurring = runtime.mtrModalFreq !== 'one-off';
+    document.getElementById('mtrEditScopeWrap').classList.toggle('hidden', !(isEditing && isRecurring));
+  }
+
+  function openMemberTransferModal({ transferId = null, fromMemberId = null, toMemberId = null, defaultFreq = 'monthly' } = {}) {
+    const members = getMembers();
+    if (members.length < 2) {
+      showToast('Add at least two member/joint accounts first.', 'error');
+      openMembersModal();
+      return;
+    }
+
+    document.getElementById('memberTransferForm').reset();
+    populateMemberSelects();
+    document.getElementById('mtrIdInput').value = transferId || '';
+    document.getElementById('mtrEditScopeMonthName').textContent = formatMonthLong(runtime.selectedMonth);
+    document.getElementById('mtrStatusMonthLabel').textContent = formatMonthShort(runtime.selectedMonth);
+    document.querySelector('input[name="mtrEditScope"][value="series"]').checked = true;
+
+    const jointMember = members.find((m) => m.role === 'joint') || members[0];
+    const personalMember = members.find((m) => m.id !== jointMember.id) || members[0];
+
+    if (transferId) {
+      const tr = (runtime.state.memberTransfers || []).find((t) => t.id === transferId);
+      if (!tr) return;
+      const resolved = resolveMemberTransferForMonth(tr, runtime.selectedMonth);
+      runtime.mtrModalFreq = tr.frequency || 'monthly';
+      document.getElementById('memberTransferModalTitle').textContent = 'Edit Account Allocation / Transfer';
+      document.getElementById('mtrFromMemberSelect').value = tr.fromMemberId;
+      document.getElementById('mtrToMemberSelect').value = tr.toMemberId;
+      document.getElementById('mtrTitleInput').value = tr.title;
+      document.getElementById('mtrAmountInput').value = resolved.hasAmountOverride ? resolved.computedAmount : tr.amount;
+      document.getElementById('mtrOneOffMonthInput').value = tr.month || runtime.selectedMonth;
+      document.getElementById('mtrOneOffDateInput').value = tr.date || '';
+      document.getElementById('mtrDayOfWeekInput').value = String(tr.dayOfWeek ?? 5);
+      document.getElementById('mtrWeeklyStartInput').value = tr.startMonth || runtime.selectedMonth;
+      document.getElementById('mtrWeeklyEndInput').value = tr.endMonth || '';
+      document.getElementById('mtrDayOfMonthInput').value = String(tr.dayOfMonth || 28);
+      document.getElementById('mtrMonthlyStartInput').value = tr.startMonth || runtime.selectedMonth;
+      document.getElementById('mtrMonthlyEndInput').value = tr.endMonth || '';
+      document.getElementById('mtrStatusInput').value = resolved.status;
+      document.getElementById('mtrNotesInput').value = resolved.note || '';
+    } else {
+      runtime.mtrModalFreq = defaultFreq;
+      const chosenFrom = fromMemberId || personalMember.id;
+      const chosenTo = toMemberId || (chosenFrom === jointMember.id ? personalMember.id : jointMember.id);
+      const fromName = getMemberById(chosenFrom)?.name || 'Personal';
+      const toName = getMemberById(chosenTo)?.name || 'Joint Account';
+      document.getElementById('memberTransferModalTitle').textContent = 'Allocate Money Between Accounts';
+      document.getElementById('mtrFromMemberSelect').value = chosenFrom;
+      document.getElementById('mtrToMemberSelect').value = chosenTo;
+      document.getElementById('mtrTitleInput').value = `${fromName} → ${toName} Bills Allocation`;
+      document.getElementById('mtrOneOffMonthInput').value = runtime.selectedMonth;
+      document.getElementById('mtrOneOffDateInput').value = runtime.selectedMonth === getCurrentMonth() ? getTodayIso() : getLastDayOfMonthIso(runtime.selectedMonth);
+      document.getElementById('mtrWeeklyStartInput').value = runtime.selectedMonth;
+      document.getElementById('mtrMonthlyStartInput').value = runtime.selectedMonth;
+      document.getElementById('mtrDayOfMonthInput').value = '28';
+      document.getElementById('mtrStatusInput').value = runtime.selectedMonth < getCurrentMonth() ? 'paid' : 'pending';
+    }
+
+    syncMtrModalVisibility();
+    openModal('memberTransferModal');
+    document.getElementById('mtrAmountInput').focus();
   }
 
   function openSavingsAccountModal(accountId = null) {
@@ -1892,6 +2307,7 @@
   }
 
   function renderMembersManageList() {
+    ensureValidClientState(runtime.state);
     const members = getMembers();
     const listEl = document.getElementById('membersManageList');
     if (!listEl) return;
@@ -1911,9 +2327,60 @@
     `).join('');
   }
 
-  function openMembersModal() {
+  function saveAllMemberRowsFromDom({ toast = true, close = false, reRenderList = true, explicit = false } = {}) {
+    runtime.state = ensureValidClientState(runtime.state);
+    const listEl = document.getElementById('membersManageList');
+    if (!listEl) return false;
+    const rows = Array.from(listEl.querySelectorAll('.member-manage-item[data-member-row]'));
+    let changedCount = 0;
+
+    for (const row of rows) {
+      const id = row.dataset.memberRow;
+      const member = runtime.state.members.find((m) => m.id === id);
+      if (!member) continue;
+      const nameInput = row.querySelector(`[data-member-name="${id}"]`);
+      const roleSelect = row.querySelector(`[data-member-role="${id}"]`);
+      const colorInput = row.querySelector(`[data-member-color="${id}"]`);
+      const newName = nameInput?.value.trim();
+      if (!newName) {
+        if (nameInput) nameInput.value = member.name;
+        showToast('Member / account name cannot be empty.', 'error');
+        nameInput?.focus();
+        return false;
+      }
+      const newRole = roleSelect?.value === 'joint' ? 'joint' : 'personal';
+      const newColor = colorInput?.value || member.color;
+      if (member.name !== newName || member.role !== newRole || member.color !== newColor) {
+        member.name = newName;
+        member.role = newRole;
+        member.color = newColor;
+        changedCount++;
+      }
+    }
+
+    if (changedCount > 0) {
+      if (reRenderList) renderMembersManageList();
+      persistChange(toast ? 'Saved account & member changes' : null);
+    } else if (toast && explicit) {
+      showToast('Account names saved', 'success');
+    }
+
+    if (close) closeModal('membersModal');
+    return true;
+  }
+
+  function openMembersModal(focusMemberId = null) {
+    ensureValidClientState(runtime.state);
     renderMembersManageList();
     openModal('membersModal');
+    if (typeof focusMemberId === 'string' && focusMemberId) {
+      const inp = Array.from(document.querySelectorAll('#membersManageList [data-member-name]'))
+        .find((el) => el.dataset.memberName === focusMemberId);
+      if (inp) {
+        inp.focus();
+        inp.select();
+      }
+    }
   }
 
   function openNetworkModal() {
@@ -1989,8 +2456,26 @@
       }
     });
 
-    document.getElementById('btnManageMembers').addEventListener('click', openMembersModal);
-    document.getElementById('btnEditMembersInline').addEventListener('click', openMembersModal);
+    document.getElementById('btnManageMembers').addEventListener('click', () => openMembersModal());
+    document.getElementById('btnEditMembersInline').addEventListener('click', () => openMembersModal());
+    document.getElementById('btnSaveAllMembers')?.addEventListener('click', () => {
+      saveAllMemberRowsFromDom({ toast: true, close: true, reRenderList: true, explicit: true });
+    });
+
+    const membersListEl = document.getElementById('membersManageList');
+    if (membersListEl) {
+      membersListEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.target.closest('[data-member-name]')) {
+          e.preventDefault();
+          saveAllMemberRowsFromDom({ toast: true, close: false, reRenderList: true, explicit: true });
+        }
+      });
+      membersListEl.addEventListener('change', (e) => {
+        if (e.target.closest('[data-member-name], [data-member-role], [data-member-color]')) {
+          saveAllMemberRowsFromDom({ toast: true, close: false, reRenderList: false, explicit: false });
+        }
+      });
+    }
     document.getElementById('globalMemberFilter').addEventListener('change', (e) => {
       runtime.memberFilter = e.target.value;
       renderAll();
@@ -2008,27 +2493,32 @@
     document.getElementById('btnAddOutgoingInline').addEventListener('click', () => openEntryModal({ defaultKind: 'outgoing', defaultFreq: 'monthly' }));
     document.getElementById('btnQuickAddSavingsTx').addEventListener('click', () => openSavingsTxModal({ type: 'deposit', freq: 'one-off' }));
     document.getElementById('btnAddSavingsSchedule').addEventListener('click', () => openSavingsTxModal({ type: 'deposit', freq: 'monthly' }));
+    document.getElementById('btnAddMemberTransfer').addEventListener('click', () => openMemberTransferModal({ defaultFreq: 'monthly' }));
 
     // Rolling Month Navigation
     document.getElementById('btnPrevMonth').addEventListener('click', () => {
       runtime.selectedMonth = shiftMonth(runtime.selectedMonth, -1);
       runtime.plannedAllocations = {};
+      runtime.plannedJointTransfers = {};
       renderAll();
     });
     document.getElementById('btnNextMonth').addEventListener('click', () => {
       runtime.selectedMonth = shiftMonth(runtime.selectedMonth, 1);
       runtime.plannedAllocations = {};
+      runtime.plannedJointTransfers = {};
       renderAll();
     });
     document.getElementById('btnTodayMonth').addEventListener('click', () => {
       runtime.selectedMonth = getCurrentMonth();
       runtime.plannedAllocations = {};
+      runtime.plannedJointTransfers = {};
       renderAll();
     });
     document.getElementById('monthPickerInput').addEventListener('change', (e) => {
       if (e.target.value) {
         runtime.selectedMonth = e.target.value;
         runtime.plannedAllocations = {};
+        runtime.plannedJointTransfers = {};
         renderAll();
       }
     });
@@ -2067,6 +2557,7 @@
       if (monthBtn) {
         runtime.selectedMonth = monthBtn.dataset.selectMonth;
         runtime.plannedAllocations = {};
+        runtime.plannedJointTransfers = {};
         renderAll();
         return;
       }
@@ -2075,9 +2566,114 @@
       if (openMonthBtn) {
         runtime.selectedMonth = openMonthBtn.dataset.openMonth;
         runtime.plannedAllocations = {};
+        runtime.plannedJointTransfers = {};
         const targetTab = openMonthBtn.dataset.openKind === 'savings' ? 'savings' : 'overview';
         document.querySelector(`.view-tab[data-tab="${targetTab}"]`).click();
         renderAll();
+        return;
+      }
+
+      const newMtrBtn = e.target.closest('[data-new-mtr-from]');
+      if (newMtrBtn) {
+        openMemberTransferModal({ fromMemberId: newMtrBtn.dataset.newMtrFrom, defaultFreq: 'monthly' });
+        return;
+      }
+
+      const payFromMemberBtn = e.target.closest('[data-pay-from-member]');
+      if (payFromMemberBtn) {
+        openEntryModal({ defaultKind: 'outgoing', defaultFreq: 'one-off', defaultMemberId: payFromMemberBtn.dataset.payFromMember });
+        return;
+      }
+
+      if (e.target.id === 'btnAutoCoverByIncome' || e.target.id === 'btnAutoCoverEqual') {
+        const fullSummary = computeMonthSummary(runtime.selectedMonth, runtime.state, 'all');
+        const jointMember = getMembers().find((m) => m.role === 'joint') || getMembers()[0];
+        const jb = fullSummary.byMember[jointMember?.id] || { totalShortfall: 0 };
+        const mode = e.target.id === 'btnAutoCoverEqual' ? 'equal' : 'income';
+        runtime.plannedJointTransfers = computeJointAutoSplit(jb.totalShortfall, mode);
+        renderAccountCoverageAndTransfers(computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter));
+        return;
+      }
+
+      if (e.target.id === 'btnApplyJointTransfers') {
+        const members = getMembers();
+        const jointMember = members.find((m) => m.role === 'joint') || members[0];
+        const personalMembers = members.filter((m) => m.id !== jointMember?.id);
+        const txDate = runtime.selectedMonth === getCurrentMonth() ? getTodayIso() : getLastDayOfMonthIso(runtime.selectedMonth);
+        if (!Array.isArray(runtime.state.memberTransfers)) runtime.state.memberTransfers = [];
+
+        let count = 0;
+        let totalMoved = 0;
+        for (const p of personalMembers) {
+          const amt = Math.round(Math.max(0, Number(runtime.plannedJointTransfers[p.id] || 0)) * 100) / 100;
+          if (amt > 0) {
+            const trId = uid('mtr');
+            runtime.state.memberTransfers.push({
+              id: trId,
+              fromMemberId: p.id,
+              toMemberId: jointMember.id,
+              title: `${p.name} → ${jointMember.name} Top-Up`,
+              frequency: 'one-off',
+              amount: amt,
+              dayOfMonth: null,
+              dayOfWeek: null,
+              month: runtime.selectedMonth,
+              date: txDate,
+              startMonth: null,
+              endMonth: null,
+              notes: `Allocated to cover ${formatMonthShort(runtime.selectedMonth)} joint bills`,
+              createdAt: new Date().toISOString()
+            });
+            runtime.state.monthOverrides[`${trId}_${runtime.selectedMonth}`] = {
+              status: runtime.selectedMonth < getCurrentMonth() ? 'paid' : 'pending',
+              updatedAt: new Date().toISOString()
+            };
+            count++;
+            totalMoved += amt;
+          }
+        }
+
+        if (count === 0) {
+          showToast('Enter at least one personal contribution above 0 (or use Auto-Cover if there is a shortfall).', 'error');
+          return;
+        }
+        runtime.plannedJointTransfers = {};
+        persistChange(`Allocated ${formatMoney(totalMoved)} from ${count} personal account(s) to ${jointMember.name}`);
+        return;
+      }
+
+      const toggleMtrBtn = e.target.closest('[data-toggle-mtr-status]');
+      if (toggleMtrBtn) {
+        const trId = toggleMtrBtn.dataset.toggleMtrStatus;
+        const tr = (runtime.state.memberTransfers || []).find((item) => item.id === trId);
+        if (!tr) return;
+        const resolved = resolveMemberTransferForMonth(tr, runtime.selectedMonth);
+        const nextStatus = resolved.status === 'pending' ? 'paid' : resolved.status === 'paid' ? 'skipped' : 'pending';
+        const key = `${trId}_${runtime.selectedMonth}`;
+        runtime.state.monthOverrides[key] = {
+          ...(runtime.state.monthOverrides[key] || {}),
+          status: nextStatus,
+          updatedAt: new Date().toISOString()
+        };
+        persistChange(`Marked transfer "${tr.title}" as ${nextStatus}`);
+        return;
+      }
+
+      const editMtrBtn = e.target.closest('[data-edit-mtr]');
+      if (editMtrBtn) {
+        openMemberTransferModal({ transferId: editMtrBtn.dataset.editMtr });
+        return;
+      }
+
+      const removeMtrBtn = e.target.closest('[data-remove-mtr]');
+      if (removeMtrBtn) {
+        openDeleteItemModal('mtr', removeMtrBtn.dataset.removeMtr);
+        return;
+      }
+
+      const editMemberBtn = e.target.closest('[data-edit-member]');
+      if (editMemberBtn) {
+        openMembersModal(editMemberBtn.dataset.editMember);
         return;
       }
 
@@ -2091,27 +2687,13 @@
 
       const saveMemberBtn = e.target.closest('[data-save-member]');
       if (saveMemberBtn) {
-        const id = saveMemberBtn.dataset.saveMember;
-        const member = runtime.state.members.find((m) => m.id === id);
-        if (!member) return;
-        const nameInput = document.querySelector(`[data-member-name="${id}"]`);
-        const roleSelect = document.querySelector(`[data-member-role="${id}"]`);
-        const colorInput = document.querySelector(`[data-member-color="${id}"]`);
-        const newName = nameInput?.value.trim();
-        if (!newName) {
-          showToast('Member name cannot be empty.', 'error');
-          return;
-        }
-        member.name = newName;
-        member.role = roleSelect?.value === 'joint' ? 'joint' : 'personal';
-        member.color = colorInput?.value || member.color;
-        renderMembersManageList();
-        persistChange(`Updated member "${member.name}"`);
+        saveAllMemberRowsFromDom({ toast: true, close: false, reRenderList: true, explicit: true });
         return;
       }
 
       const delMemberBtn = e.target.closest('[data-delete-member]');
       if (delMemberBtn) {
+        runtime.state = ensureValidClientState(runtime.state);
         const id = delMemberBtn.dataset.deleteMember;
         if (runtime.state.members.length <= 1) {
           showToast('At least one member/account is required.', 'error');
@@ -2129,6 +2711,10 @@
         }
         for (const tx of runtime.state.savingsTransactions || []) {
           if (tx.memberId === id) tx.memberId = fallbackId;
+        }
+        for (const tr of runtime.state.memberTransfers || []) {
+          if (tr.fromMemberId === id) tr.fromMemberId = fallbackId;
+          if (tr.toMemberId === id) tr.toMemberId = fallbackId;
         }
         if (runtime.memberFilter === id) runtime.memberFilter = 'all';
         if (runtime.allocMemberId === id) runtime.allocMemberId = 'all';
@@ -2236,6 +2822,8 @@
     // Add Member form
     document.getElementById('addMemberForm').addEventListener('submit', (e) => {
       e.preventDefault();
+      runtime.state = ensureValidClientState(runtime.state);
+      saveAllMemberRowsFromDom({ toast: false, close: false, reRenderList: false });
       const name = document.getElementById('newMemberNameInput').value.trim();
       const role = document.getElementById('newMemberRoleInput').value === 'joint' ? 'joint' : 'personal';
       const color = document.getElementById('newMemberColorInput').value || '#f59e0b';
@@ -2477,17 +3065,22 @@
       persistChange(`Added ${freq} ${kind}: "${title}"`);
     });
 
-    // Delete / Stop modal buttons (handles both entries and savingsTransactions)
+    // Delete / Stop modal buttons (handles entries, savingsTransactions, and memberTransfers)
     document.getElementById('btnStopFromMonth').addEventListener('click', () => {
       const id = runtime.pendingDeleteId;
-      const isStx = runtime.pendingDeleteKind === 'stx';
-      const list = isStx ? runtime.state.savingsTransactions : runtime.state.entries;
+      const kind = runtime.pendingDeleteKind;
+      const list = kind === 'stx'
+        ? runtime.state.savingsTransactions
+        : kind === 'mtr'
+          ? (runtime.state.memberTransfers || [])
+          : runtime.state.entries;
       const item = list.find((x) => x.id === id);
       if (!item) return;
 
       const prevMonth = shiftMonth(runtime.selectedMonth, -1);
       if (item.startMonth && prevMonth < item.startMonth) {
-        if (isStx) runtime.state.savingsTransactions = list.filter((x) => x.id !== id);
+        if (kind === 'stx') runtime.state.savingsTransactions = list.filter((x) => x.id !== id);
+        else if (kind === 'mtr') runtime.state.memberTransfers = list.filter((x) => x.id !== id);
         else runtime.state.entries = list.filter((x) => x.id !== id);
       } else {
         item.endMonth = prevMonth;
@@ -2498,8 +3091,11 @@
 
     document.getElementById('btnDeleteAllMonths').addEventListener('click', () => {
       const id = runtime.pendingDeleteId;
-      if (runtime.pendingDeleteKind === 'stx') {
+      const kind = runtime.pendingDeleteKind;
+      if (kind === 'stx') {
         runtime.state.savingsTransactions = runtime.state.savingsTransactions.filter((t) => t.id !== id);
+      } else if (kind === 'mtr') {
+        runtime.state.memberTransfers = (runtime.state.memberTransfers || []).filter((t) => t.id !== id);
       } else {
         runtime.state.entries = runtime.state.entries.filter((e) => e.id !== id);
       }
@@ -2509,13 +3105,167 @@
 
     document.getElementById('btnConfirmOneOffDelete').addEventListener('click', () => {
       const id = runtime.pendingDeleteId;
-      if (runtime.pendingDeleteKind === 'stx') {
+      const kind = runtime.pendingDeleteKind;
+      if (kind === 'stx') {
         runtime.state.savingsTransactions = runtime.state.savingsTransactions.filter((t) => t.id !== id);
+      } else if (kind === 'mtr') {
+        runtime.state.memberTransfers = (runtime.state.memberTransfers || []).filter((t) => t.id !== id);
       } else {
         runtime.state.entries = runtime.state.entries.filter((e) => e.id !== id);
       }
       closeModal('deleteEntryModal');
       persistChange('Deleted payment');
+    });
+
+    // Joint Funding Planner manual inputs
+    document.getElementById('jointFundingPlanner').addEventListener('input', (e) => {
+      const inp = e.target.closest('[data-joint-alloc-from]');
+      if (!inp) return;
+      runtime.plannedJointTransfers[inp.dataset.jointAllocFrom] = Math.max(0, Number(inp.value || 0));
+    });
+
+    // Member Transfer modal segmented buttons & submit
+    document.querySelectorAll('[data-mtr-freq]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        runtime.mtrModalFreq = btn.dataset.mtrFreq;
+        syncMtrModalVisibility();
+      });
+    });
+
+    document.getElementById('memberTransferForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (!Array.isArray(runtime.state.memberTransfers)) runtime.state.memberTransfers = [];
+
+      const trId = document.getElementById('mtrIdInput').value;
+      const fromMemberId = document.getElementById('mtrFromMemberSelect').value;
+      const toMemberId = document.getElementById('mtrToMemberSelect').value;
+      const title = document.getElementById('mtrTitleInput').value.trim();
+      const amount = Number(document.getElementById('mtrAmountInput').value);
+      const status = document.getElementById('mtrStatusInput').value;
+      const notes = document.getElementById('mtrNotesInput').value.trim();
+
+      if (!fromMemberId || !toMemberId || fromMemberId === toMemberId) {
+        showToast('Please select different source and target accounts.', 'error');
+        return;
+      }
+      if (!title || !Number.isFinite(amount) || amount <= 0) {
+        showToast('Please enter a valid description and positive amount.', 'error');
+        return;
+      }
+
+      const freq = runtime.mtrModalFreq;
+
+      if (trId) {
+        const existing = runtime.state.memberTransfers.find((t) => t.id === trId);
+        if (!existing) return;
+
+        const editScope = freq !== 'one-off'
+          ? document.querySelector('input[name="mtrEditScope"]:checked')?.value || 'series'
+          : 'series';
+
+        const overrideKey = `${trId}_${runtime.selectedMonth}`;
+        if (editScope === 'month' && freq !== 'one-off') {
+          runtime.state.monthOverrides[overrideKey] = {
+            ...(runtime.state.monthOverrides[overrideKey] || {}),
+            status,
+            amount,
+            note: notes,
+            updatedAt: new Date().toISOString()
+          };
+          closeModal('memberTransferModal');
+          persistChange(`Updated ${formatMonthShort(runtime.selectedMonth)} transfer override`);
+          return;
+        }
+
+        existing.fromMemberId = fromMemberId;
+        existing.toMemberId = toMemberId;
+        existing.title = title;
+        existing.frequency = freq;
+        existing.amount = amount;
+        existing.notes = notes;
+
+        if (freq === 'one-off') {
+          const exactDate = document.getElementById('mtrOneOffDateInput').value;
+          const m = document.getElementById('mtrOneOffMonthInput').value || (exactDate ? exactDate.slice(0, 7) : runtime.selectedMonth);
+          existing.month = m;
+          existing.date = exactDate || null;
+          existing.startMonth = null;
+          existing.endMonth = null;
+        } else if (freq === 'weekly') {
+          existing.dayOfWeek = Number(document.getElementById('mtrDayOfWeekInput').value);
+          existing.startMonth = document.getElementById('mtrWeeklyStartInput').value || runtime.selectedMonth;
+          existing.endMonth = document.getElementById('mtrWeeklyEndInput').value || null;
+          existing.month = null;
+          existing.date = null;
+        } else {
+          existing.dayOfMonth = Number(document.getElementById('mtrDayOfMonthInput').value || 28);
+          existing.startMonth = document.getElementById('mtrMonthlyStartInput').value || runtime.selectedMonth;
+          existing.endMonth = document.getElementById('mtrMonthlyEndInput').value || null;
+          existing.month = null;
+          existing.date = null;
+        }
+
+        const targetMonth = freq === 'one-off' ? existing.month : runtime.selectedMonth;
+        runtime.state.monthOverrides[`${trId}_${targetMonth}`] = {
+          ...(runtime.state.monthOverrides[`${trId}_${targetMonth}`] || {}),
+          status,
+          updatedAt: new Date().toISOString()
+        };
+        delete runtime.state.monthOverrides[`${trId}_${targetMonth}`].amount;
+
+        closeModal('memberTransferModal');
+        runtime.plannedJointTransfers = {};
+        persistChange(`Updated transfer "${title}"`);
+        return;
+      }
+
+      const newId = uid('mtr');
+      let trMonth = null;
+      let trDate = null;
+      let startMonth = null;
+      let endMonth = null;
+      let dayOfMonth = null;
+      let dayOfWeek = null;
+
+      if (freq === 'one-off') {
+        trDate = document.getElementById('mtrOneOffDateInput').value || null;
+        trMonth = document.getElementById('mtrOneOffMonthInput').value || (trDate ? trDate.slice(0, 7) : runtime.selectedMonth);
+      } else if (freq === 'weekly') {
+        dayOfWeek = Number(document.getElementById('mtrDayOfWeekInput').value);
+        startMonth = document.getElementById('mtrWeeklyStartInput').value || runtime.selectedMonth;
+        endMonth = document.getElementById('mtrWeeklyEndInput').value || null;
+      } else {
+        dayOfMonth = Number(document.getElementById('mtrDayOfMonthInput').value || 28);
+        startMonth = document.getElementById('mtrMonthlyStartInput').value || runtime.selectedMonth;
+        endMonth = document.getElementById('mtrMonthlyEndInput').value || null;
+      }
+
+      runtime.state.memberTransfers.push({
+        id: newId,
+        fromMemberId,
+        toMemberId,
+        title,
+        frequency: freq,
+        amount,
+        dayOfMonth,
+        dayOfWeek,
+        month: trMonth,
+        date: trDate,
+        startMonth,
+        endMonth,
+        notes,
+        createdAt: new Date().toISOString()
+      });
+
+      const statusTargetMonth = freq === 'one-off' ? trMonth : runtime.selectedMonth;
+      runtime.state.monthOverrides[`${newId}_${statusTargetMonth}`] = {
+        status,
+        updatedAt: new Date().toISOString()
+      };
+
+      closeModal('memberTransferModal');
+      runtime.plannedJointTransfers = {};
+      persistChange(`Added ${freq} transfer "${title}"`);
     });
 
     // Savings account modal & submit
@@ -2758,7 +3508,7 @@
         if (!parsed || !Array.isArray(parsed.entries) || !Array.isArray(parsed.savingsAccounts)) {
           throw new Error('Backup file is missing required budget structure.');
         }
-        runtime.state = parsed;
+        runtime.state = ensureValidClientState(parsed);
         runtime.plannedAllocations = {};
         closeModal('networkModal');
         persistChange('Backup imported & synced locally');
@@ -2778,10 +3528,11 @@
           body: JSON.stringify({ mode: 'sample', anchorMonth: getCurrentMonth(), clientId: CLIENT_ID })
         });
         const data = await res.json();
-        runtime.state = data.state;
+        runtime.state = ensureValidClientState(data.state);
         runtime.revision = data.revision;
         runtime.pendingSync = false;
         runtime.plannedAllocations = {};
+        runtime.plannedJointTransfers = {};
         writeLocalCache({ state: runtime.state, revision: runtime.revision, updatedAt: data.updatedAt, pendingSync: false });
         closeModal('networkModal');
         renderAll();
@@ -2800,10 +3551,11 @@
           body: JSON.stringify({ mode: 'empty', clientId: CLIENT_ID })
         });
         const data = await res.json();
-        runtime.state = data.state;
+        runtime.state = ensureValidClientState(data.state);
         runtime.revision = data.revision;
         runtime.pendingSync = false;
         runtime.plannedAllocations = {};
+        runtime.plannedJointTransfers = {};
         writeLocalCache({ state: runtime.state, revision: runtime.revision, updatedAt: data.updatedAt, pendingSync: false });
         closeModal('networkModal');
         renderAll();
@@ -2844,7 +3596,7 @@
 
     const cached = await readLocalCache();
     if (cached && cached.state) {
-      runtime.state = cached.state;
+      runtime.state = ensureValidClientState(cached.state);
       runtime.revision = cached.revision || 0;
       runtime.updatedAt = cached.updatedAt || null;
       runtime.pendingSync = Boolean(cached.pendingSync);
