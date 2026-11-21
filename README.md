@@ -9,7 +9,9 @@ A **local-first, self-hosted rolling monthly income, outgoings, direct debits, a
 - **100% Local Persistence:** Stores state and revision snapshots in SQLite (`data/household-budget.sqlite`) with automatic mirrored JSON backups (`data/household-budget.json`).
 - **Offline-Resilient Client Caching:** Caches state locally in `localStorage`, `IndexedDB`, and a Service Worker (`sw.js`) so the interface loads instantaneously and queues edits when temporarily disconnected.
 - **Multi-Device LAN & Remote Sync:** Real-time Server-Sent Events (`GET /api/events`) keep every connected browser tab and mobile device synchronized automatically.
-- **Rolling Monthly Engine:** Seamlessly browse past saved months, the current month, and future scheduled months side-by-side—with weekly direct debits, monthly direct debits, one-off payments, and full savings/asset tracking.
+- **Joint & Personal Account Bill Coverage & Allocations:** Allocate money from personal accounts (`My Account`, `Partner Account`, etc.) into the `Joint Account` via monthly, weekly, or one-off transfers, and see exact bill coverage, shortfalls, and surpluses for both personal and joint accounts.
+- **Site-Wide Household Member / Payer Account Labeling & Renaming:** Set up, color-code, and rename personal and joint accounts at any time, label every income, bill, savings pot, and asset with who pays or owns it, and filter any view by account.
+- **Rolling Monthly Engine:** Seamlessly browse past saved months, the current month, and future scheduled months side-by-side—with weekly direct debits, monthly direct debits, one-off payments, and recurring/one-off savings & asset tracking.
 - **Zero-Dependency Docker Image:** Runs cleanly on `node:24-alpine` exposed on port `5025` with persistent `/app/data` volume storage.
 
 ---
@@ -17,31 +19,51 @@ A **local-first, self-hosted rolling monthly income, outgoings, direct debits, a
 ## Screenshots
 
 ### 1. Monthly Overview & Rolling Navigator
-Track total monthly income, total outgoings (with paid vs. upcoming progress), money left over, and savings allocation at a glance across a 9-month rolling pill strip.
+Track total monthly income, total outgoings (with paid vs. upcoming progress), money left over, and savings allocation across a 9-month rolling pill strip, with quick member/account filtering and `Members & Accounts` management in the header.
 
 ![Overview Dashboard](docs/screenshots/01-overview-dashboard.png)
 
-### 2. Outgoings, Weekly/Monthly Direct Debits & Incomes
-Filter by Monthly Direct Debits, Weekly Direct Debits (showing exact weekday occurrence counts like `4×` or `5×` and dates in the month), One-Off Payments, Paid, or Upcoming—with one-click status toggles, per-month overrides, and clean removal controls.
+### 2. Joint & Personal Account Bill Coverage & Allocations
+See how much money is needed in your Joint Account and each Personal Account to cover bills and savings, use the **Joint Account Funding Planner** (**Auto-Cover Shortfall (By Income %)** or **50/50 Equal Split**), and manage recurring or one-off Personal → Joint account transfers.
+
+![Joint and Personal Account Bill Coverage](docs/screenshots/07-joint-personal-bill-coverage.png)
+
+### 3. Outgoings, Weekly/Monthly Direct Debits & Incomes
+Filter by Monthly Direct Debits, Weekly Direct Debits (showing exact weekday occurrence counts like `4×` or `5×` and dates in the month), One-Off Payments, Paid, or Upcoming—with payer badges, one-click status toggles, per-month overrides, and non-destructive stopping.
 
 ![Outgoings and Direct Debits](docs/screenshots/02-outgoings-and-direct-debits.png)
 
-### 3. Add / Edit Incomes, Direct Debits & One-Off Payments
-Switch effortlessly between Monthly DD, Weekly DD, and One-Off schedules, choose Essential vs. Flexible priority, and edit either an entire recurring series or just the currently selected month.
+### 4. Add / Edit Incomes, Direct Debits & One-Off Payments
+Switch effortlessly between Monthly DD, Weekly DD, and One-Off schedules, choose which member/payer account pays or receives it, set Essential vs. Flexible priority, and edit either an entire recurring series or just the currently selected month.
 
 ![Add Outgoing Modal](docs/screenshots/03-add-outgoing-modal.png)
 
-### 4. Savings Accounts, Assets & Change History
-Manage savings pots, ISAs, investments, cash pots, and physical assets with goal progress bars, `+ Add Money`, `- Remove`, and `Adjust (+/-)` movements, plus a full filterable change history ledger.
+### 5. By Member / Payer Account Breakdown & Quick Rename/Filter
+Inspect how much each member/account has available, needed for bills, left over, and allocated to savings side-by-side, with one-click `Rename` and `Filter` (`Showing ✓`) buttons right on each account card.
+
+![By Member Payer Account Breakdown](docs/screenshots/09-by-member-payer-accounts.png)
+
+### 6. Household Members & Payer Accounts Modal
+Customize joint or personal account names, account roles (`Joint` vs. `Personal`), and badge colors, save edits inline or across all rows at once via **Save Account Names & Close**, or add new payer accounts.
+
+![Members and Payer Accounts Modal](docs/screenshots/10-members-and-accounts-modal.png)
+
+### 7. Savings Accounts, Physical Assets & Balance Actions
+Manage savings pots, ISAs, investments, cash pots, and physical assets with goal progress bars, owner badges, and quick `+ Add Money`, `- Remove`, `Allocate`, and `Adjust` actions.
 
 ![Savings and Assets](docs/screenshots/04-savings-and-assets.png)
 
-### 5. 12-Month Rolling Projection & Global Search
-Compare 12 past, current, and upcoming months side-by-side in an interactive bar chart and table, and search across all past, current, and future payments, incomes, and savings changes.
+### 8. Scheduled Monthly, Weekly & One-Off Savings & Asset Payments
+Schedule recurring monthly standing orders, weekly transfer rules, and one-off additions/removals for both cash savings accounts and physical assets, complete with payer account labels, filters, and a chronological change history ledger.
+
+![Scheduled Savings and Asset Payments](docs/screenshots/08-scheduled-savings-and-asset-payments.png)
+
+### 9. 12-Month Rolling Projection & Global Search
+Compare 12 past, current, and upcoming months side-by-side in an interactive bar chart and table, and search across all past, current, and future payments, incomes, account transfers, and savings changes with **Paid By / Member** filtering.
 
 ![Rolling History and Global Search](docs/screenshots/05-rolling-history-and-search.png)
 
-### 6. Local Network Access, Offline Cache & Backups
+### 10. Local Network Access, Offline Cache & Backups
 Copy direct LAN/remote URLs for phones and tablets, inspect SQLite/JSON/browser cache sync status, export or restore JSON backups, and reload sample data or start blank.
 
 ![Local Network Access and Cache Modal](docs/screenshots/06-lan-access-and-cache.png)
@@ -53,9 +75,9 @@ Copy direct LAN/remote URLs for phones and tablets, inspect SQLite/JSON/browser 
 ### 1. Rolling Monthly Cashflow Tracking
 - **Interactive Rolling Navigator:** Step backward and forward with `< Prev` / `Next >`, click any month in the 9-month rolling pill strip (4 past months, active month, 4 future months with net surplus previews), jump to any historical or future month via the month picker, or snap back with `Today`.
 - **Headline Executive KPI Cards:**
-  - **Total Monthly Income** (broken down by Monthly, Weekly, and One-Off sources)
+  - **Total Monthly Income** (shows Direct Income + Allocations In − Transfers Out when filtered to a specific account, or full Monthly / Weekly / One-Off breakdown)
   - **Total Monthly Outgoings** (Monthly DD, Weekly DD, One-Off totals, plus a Paid vs. Upcoming progress bar)
-  - **Money Left Over** (net surplus/deficit, `% of income` remaining, and Essential vs. Flexible spending split)
+  - **Money Left Over** (net surplus/deficit, `% of available` remaining, and Essential vs. Flexible spending split)
   - **Available for Savings & Net Worth** (remaining unallocated surplus after your safety buffer and logged monthly transfers, plus total savings & assets through the selected month)
 - **Multi-Currency Display:** Switch cleanly between `£ GBP`, `$ USD`, and `€ EUR`.
 
@@ -68,14 +90,22 @@ Copy direct LAN/remote URLs for phones and tablets, inspect SQLite/JSON/browser 
     - *Monthly average (`×52÷12`)*
   - **One-Off Payments & Incomes:** Scheduled for any past, current, or future month with optional exact date.
 - **Per-Month Overrides & Non-Destructive Stopping:**
-  - Edit a recurring direct debit across all active months **or** override the amount/notes for a single month only.
+  - Edit a recurring direct debit across all active months **or** override the amount/member/notes for a single month only.
   - Remove a recurring direct debit by choosing **"Stop from this month onwards (keep past history)"** or **"Delete completely from all months"**.
 - **One-Click Status Cycling:** Toggle any item between `Paid / Received`, `Upcoming`, and `Skipped` for the viewed month.
 
-### 3. Household Members, Payer Accounts & Interactive Allocator
-- **Members & Payer Accounts (`Members & Accounts` Modal):** Set up joint and personal accounts (defaulting to `Joint Account`, `My Account`, and `Partner Account`, with custom names, roles, and label colors).
-- **Site-Wide Payer & Owner Labeling:** Label every income, outgoing, direct debit, savings/asset account, and savings payment with which member pays or owns it—displayed as colored badges across Overview, Savings & Assets, and Global Search.
-- **By Member / Payer Account Breakdown & Global Filter:** View each member's monthly income, outgoings, leftover cash, and savings/asset allocations side-by-side, or filter the dashboard and search results to a specific member's account.
+### 3. Joint & Personal Account Bill Coverage, Member Accounts & Transfers
+- **Personal-to-Joint Account Allocations (`+ Allocate Personal → Joint`):**
+  - Transfer money from personal accounts (`My Account`, `Partner Account`, etc.) to the `Joint Account` (or any target account) on a **Monthly**, **Weekly**, or **One-Off** schedule with status tracking (`Upcoming`, `Transferred`, `Skipped`), per-month overrides, and non-destructive stopping.
+- **Per-Account Bill Coverage Cards:**
+  - Shows **Needed for Bills** (plus savings commitments), **Available in Account** (`Direct Income + Allocations In − Transfers Out`), remaining surplus/deficit after bills, bill-coverage progress bar, and instant status pills (**Bills Covered** vs. **Needs £X for bills**).
+  - Quick per-account actions right on each card: **`Allocate → Joint`**, **`+ Pay Bill`**, and **`Filter`**.
+- **Joint Account Funding Planner:**
+  - Automatically calculates any Joint Account shortfall for the selected month and lets you fill personal contribution amounts with one click using **Auto-Cover Shortfall (By Income %)** or **50/50 Equal Split**, then apply top-up allocations immediately.
+- **Household Members & Payer Accounts (`Members & Accounts` / `Manage / Rename`):**
+  - Add, color-code, and configure `Joint` or `Personal` payer accounts across the whole app.
+  - Rename accounts easily via row `Save`, `Enter`, auto-save on change, inline **`Rename`** buttons on the **By Member / Payer Account** card, or **`Save Account Names & Close`**, persisting cleanly across SQLite, JSON backup, and offline browser cache.
+- **By Member / Payer Account Breakdown & Global Filter:** Compare each account's available funds, bills needed, leftover cash, and savings allocations side-by-side, and click **`Filter`** (`Showing ✓`) or use the top **Account / Member** selector to focus all dashboard metrics and lists on one account.
 - **Outgoings Visual Breakdown:** Visual stacked bar comparing Monthly DDs, Weekly DDs, and One-Offs alongside category-by-category progress bars.
 - **Interactive Savings & Assets Allocator:**
   - Choose **Allocate From Member / Account** (whole household or any individual member) and calculate **Remaining Available to Allocate** after your current-account safety buffer.
