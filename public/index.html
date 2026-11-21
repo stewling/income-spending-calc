@@ -43,6 +43,10 @@
           <option value="EUR">€ EUR</option>
         </select>
 
+        <button type="button" id="btnManageMembers" class="btn btn-ghost btn-sm" title="Manage household members and payer accounts">
+          Members &amp; Accounts
+        </button>
+
         <button type="button" id="syncStatusBtn" class="status-pill status-online" title="Local network URLs, cache & backups">
           <span class="status-dot"></span>
           <span id="syncStatusText">Local + LAN Synced</span>
@@ -51,7 +55,7 @@
         <div class="topbar-actions">
           <button type="button" id="btnQuickAddIncome" class="btn btn-income">+ Income</button>
           <button type="button" id="btnQuickAddOutgoing" class="btn btn-outgoing">+ Outgoing / DD</button>
-          <button type="button" id="btnQuickAddSavingsTx" class="btn btn-savings">± Savings</button>
+          <button type="button" id="btnQuickAddSavingsTx" class="btn btn-savings">± Savings / Asset</button>
         </div>
       </div>
     </header>
@@ -77,6 +81,12 @@
         </div>
 
         <div class="month-tools">
+          <label class="inline-field" title="Filter overview and savings views by payer/owner account">
+            <span>Account / Member:</span>
+            <select id="globalMemberFilter" class="select-compact" aria-label="Filter by member account">
+              <option value="all">All Members &amp; Accounts</option>
+            </select>
+          </label>
           <label class="inline-field">
             <span>Jump to month:</span>
             <input type="month" id="monthPickerInput" aria-label="Jump to any month" />
@@ -215,18 +225,35 @@
             </div>
           </section>
 
-          <!-- INTERACTIVE SAVINGS ALLOCATOR -->
+          <!-- BY MEMBER / ACCOUNT CASHFLOW BREAKDOWN -->
+          <section class="panel-card">
+            <div class="panel-header">
+              <div>
+                <h2>By Member / Payer Account</h2>
+                <p class="panel-subtitle">Who earns, who pays outgoings, and who allocates to savings &amp; assets</p>
+              </div>
+              <button type="button" id="btnEditMembersInline" class="btn btn-ghost btn-sm">Setup</button>
+            </div>
+            <div id="memberBreakdownList" class="member-breakdown-list"></div>
+          </section>
+
+          <!-- INTERACTIVE SAVINGS & ASSETS ALLOCATOR -->
           <section class="panel-card allocator-card">
             <div class="panel-header">
               <div>
-                <h2>Savings Allocator</h2>
-                <p class="panel-subtitle">Decide how much of this month's leftover cash to move to savings</p>
+                <h2>Savings &amp; Assets Allocator</h2>
+                <p class="panel-subtitle">Allocate leftover cash from any member's account into savings or asset accounts</p>
               </div>
+            </div>
+
+            <div class="field-group">
+              <label for="allocMemberSelect">Allocate From Member / Account</label>
+              <select id="allocMemberSelect"></select>
             </div>
 
             <div class="allocator-summary">
               <div class="alloc-row">
-                <span>Money left over (Income - Outgoings)</span>
+                <span id="allocLeftoverLabel">Money left over (Income - Outgoings)</span>
                 <strong id="allocLeftover">£0.00</strong>
               </div>
               <div class="alloc-row">
@@ -234,7 +261,7 @@
                 <input type="number" id="safetyBufferInput" class="input-mini" min="0" step="25" />
               </div>
               <div class="alloc-row">
-                <span>Already added to savings this month</span>
+                <span>Already added to savings/assets this month</span>
                 <strong id="allocAlreadyMoved">£0.00</strong>
               </div>
               <div class="alloc-row alloc-highlight">
@@ -256,7 +283,7 @@
                 <strong id="allocPlannedTotal">£0.00</strong>
               </div>
               <button type="button" id="btnCommitAllocation" class="btn btn-savings btn-full">
-                Transfer Planned Allocation to Savings
+                Transfer Planned Allocation to Savings &amp; Assets
               </button>
             </div>
           </section>
@@ -301,21 +328,52 @@
         </div>
         <div class="savings-banner-cta">
           <button type="button" id="btnAddSavingsAccount" class="btn btn-savings">+ Add Account / Asset</button>
-          <button type="button" id="btnRecordSavingsTx" class="btn btn-primary">± Record Deposit / Withdrawal</button>
+          <button type="button" id="btnRecordSavingsTx" class="btn btn-primary">+ Add Payment / Transfer</button>
         </div>
       </div>
 
       <div id="savingsAccountsGrid" class="savings-grid"></div>
 
+      <!-- MONTHLY, WEEKLY & ONE-OFF SAVINGS & ASSET PAYMENTS -->
+      <section class="panel-card">
+        <div class="panel-header">
+          <div>
+            <h2>Scheduled &amp; One-Off Savings &amp; Asset Payments</h2>
+            <p class="panel-subtitle" id="savingsScheduledSubtitle">Monthly standing orders, weekly transfers, and one-off additions/removals active in this month</p>
+          </div>
+          <button type="button" id="btnAddSavingsSchedule" class="btn btn-savings btn-sm">+ Add Savings / Asset Payment</button>
+        </div>
+
+        <div class="filter-chips" id="savingsFilterChips">
+          <button type="button" class="chip active" data-sav-filter="all">All</button>
+          <button type="button" class="chip" data-sav-filter="monthly">Monthly Payments</button>
+          <button type="button" class="chip" data-sav-filter="weekly">Weekly Payments</button>
+          <button type="button" class="chip" data-sav-filter="one-off">One-Off</button>
+          <button type="button" class="chip" data-sav-filter="deposit">Additions (+)</button>
+          <button type="button" class="chip" data-sav-filter="withdrawal">Removals (-)</button>
+        </div>
+
+        <div id="savingsScheduledList" class="entries-list"></div>
+      </section>
+
       <section class="panel-card ledger-panel">
         <div class="panel-header">
           <div>
             <h2>Savings &amp; Asset Change History</h2>
-            <p class="panel-subtitle">Track every addition, removal, and valuation adjustment over time</p>
+            <p class="panel-subtitle">Track every addition, removal, recurring payment, and valuation adjustment over time</p>
           </div>
           <div class="ledger-filters">
             <select id="ledgerAccountFilter" class="select-compact" aria-label="Filter by account">
               <option value="all">All Accounts &amp; Assets</option>
+            </select>
+            <select id="ledgerMemberFilter" class="select-compact" aria-label="Filter by member">
+              <option value="all">All Members</option>
+            </select>
+            <select id="ledgerFreqFilter" class="select-compact" aria-label="Filter by schedule frequency">
+              <option value="all">All Schedules</option>
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="one-off">One-Off</option>
             </select>
             <select id="ledgerScopeFilter" class="select-compact" aria-label="Filter by period">
               <option value="all">All Months</option>
@@ -398,6 +456,12 @@
             </select>
           </div>
           <div class="field-group">
+            <label for="searchMemberFilter">Paid By / Member</label>
+            <select id="searchMemberFilter">
+              <option value="all">All Members &amp; Accounts</option>
+            </select>
+          </div>
+          <div class="field-group">
             <label for="searchStatusFilter">Status</label>
             <select id="searchStatusFilter">
               <option value="all">All Statuses</option>
@@ -463,7 +527,7 @@
           </div>
         </div>
 
-        <div class="form-grid-2">
+        <div class="form-grid-3">
           <div class="field-group">
             <label for="entryCategoryInput">Category</label>
             <input type="text" id="entryCategoryInput" list="categorySuggestions" placeholder="e.g. Housing, Groceries, Salary" />
@@ -483,6 +547,11 @@
               <option value="Bonus"></option>
               <option value="Refund / Rebate"></option>
             </datalist>
+          </div>
+
+          <div class="field-group">
+            <label for="entryMemberSelect">Paid By / Account</label>
+            <select id="entryMemberSelect"></select>
           </div>
 
           <div class="field-group" id="entryEssentialWrap">
@@ -641,6 +710,10 @@
 
         <div class="form-grid-3">
           <div class="field-group">
+            <label for="savAccMemberSelect">Owner / Account Holder</label>
+            <select id="savAccMemberSelect"></select>
+          </div>
+          <div class="field-group">
             <label for="savAccRateInput">Interest / Growth %</label>
             <input type="number" id="savAccRateInput" step="0.01" value="4.5" />
           </div>
@@ -648,15 +721,17 @@
             <label for="savAccWeightInput">Auto-Split Weight</label>
             <input type="number" id="savAccWeightInput" min="0" step="1" value="25" />
           </div>
+        </div>
+
+        <div class="form-grid-2">
           <div class="field-group">
             <label for="savAccColorInput">Accent Color</label>
             <input type="color" id="savAccColorInput" value="#10b981" class="input-color" />
           </div>
-        </div>
-
-        <div class="field-group">
-          <label for="savAccNotesInput">Notes (optional)</label>
-          <input type="text" id="savAccNotesInput" placeholder="Bank provider, notice period, or asset valuation note" />
+          <div class="field-group">
+            <label for="savAccNotesInput">Notes (optional)</label>
+            <input type="text" id="savAccNotesInput" placeholder="Bank provider, notice period, or asset valuation note" />
+          </div>
         </div>
 
         <div class="modal-footer">
@@ -667,14 +742,16 @@
     </div>
   </div>
 
-  <!-- MODAL: ADD / REMOVE / ADJUST MONEY IN SAVINGS OR ASSET -->
+  <!-- MODAL: ADD / EDIT SAVINGS OR ASSET PAYMENT / MOVEMENT -->
   <div id="savingsTxModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="savingsTxModalTitle">
     <div class="modal-card">
       <div class="modal-header">
-        <h2 id="savingsTxModalTitle">Record Savings / Asset Change</h2>
+        <h2 id="savingsTxModalTitle">Savings / Asset Payment or Movement</h2>
         <button type="button" class="modal-close" data-close-modal="savingsTxModal" aria-label="Close">&times;</button>
       </div>
       <form id="savingsTxForm" class="modal-body">
+        <input type="hidden" id="stxIdInput" />
+
         <div class="segmented-row">
           <div class="segmented-group" role="radiogroup" aria-label="Transaction type">
             <button type="button" class="seg-btn active" data-stx-type="deposit">+ Add Money</button>
@@ -683,21 +760,38 @@
           </div>
         </div>
 
-        <div class="form-grid-2">
-          <div class="field-group">
-            <label for="stxAccountSelect">Account / Asset *</label>
-            <select id="stxAccountSelect" required></select>
+        <div class="segmented-row">
+          <label class="field-label-small">Schedule Frequency</label>
+          <div class="segmented-group" role="radiogroup" aria-label="Savings schedule frequency">
+            <button type="button" class="seg-btn active" data-stx-freq="one-off">One-Off</button>
+            <button type="button" class="seg-btn" data-stx-freq="weekly">Weekly Payment</button>
+            <button type="button" class="seg-btn" data-stx-freq="monthly">Monthly Payment</button>
           </div>
-          <div class="field-group">
-            <label for="stxAmountInput" id="stxAmountLabel">Amount *</label>
-            <input type="number" id="stxAmountInput" required step="0.01" placeholder="0.00" />
+        </div>
+
+        <div id="stxEditScopeWrap" class="edit-scope-box hidden">
+          <label class="field-label-small">Editing recurring savings/asset payment:</label>
+          <div class="radio-row">
+            <label><input type="radio" name="stxEditScope" value="series" checked /> Update recurring rule for all active months</label>
+            <label><input type="radio" name="stxEditScope" value="month" /> Override amount/note for <span id="stxEditScopeMonthName">this month</span> only</label>
           </div>
         </div>
 
         <div class="form-grid-2">
           <div class="field-group">
-            <label for="stxDateInput">Date *</label>
-            <input type="date" id="stxDateInput" required />
+            <label for="stxAccountSelect">Savings / Asset Account *</label>
+            <select id="stxAccountSelect" required></select>
+          </div>
+          <div class="field-group">
+            <label for="stxMemberSelect">Paid By / Funded From Account</label>
+            <select id="stxMemberSelect"></select>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="stxAmountInput" id="stxAmountLabel">Amount *</label>
+            <input type="number" id="stxAmountInput" required step="0.01" placeholder="0.00" />
           </div>
           <div class="field-group">
             <label for="stxCategoryInput">Category</label>
@@ -705,6 +799,9 @@
             <datalist id="stxCategories">
               <option value="Deposit"></option>
               <option value="Monthly Allocation"></option>
+              <option value="Monthly Standing Order"></option>
+              <option value="Weekly Savings Rule"></option>
+              <option value="Asset Contribution"></option>
               <option value="Withdrawal"></option>
               <option value="Emergency Spend"></option>
               <option value="Interest / Dividend"></option>
@@ -713,16 +810,121 @@
           </div>
         </div>
 
-        <div class="field-group">
-          <label for="stxNoteInput">Note / Reason</label>
-          <input type="text" id="stxNoteInput" placeholder="e.g. Moved leftover salary, Paid car repair, ISA growth" />
+        <!-- CONDITIONAL SCHEDULE FIELDS FOR SAVINGS/ASSET -->
+        <div id="stxOneOffFields" class="schedule-box">
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label for="stxOneOffMonthInput">Month *</label>
+              <input type="month" id="stxOneOffMonthInput" />
+            </div>
+            <div class="field-group">
+              <label for="stxDateInput">Date *</label>
+              <input type="date" id="stxDateInput" />
+            </div>
+          </div>
+        </div>
+
+        <div id="stxWeeklyFields" class="schedule-box hidden">
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="stxDayOfWeekInput">Every Weekday</label>
+              <select id="stxDayOfWeekInput">
+                <option value="1">Monday</option>
+                <option value="2">Tuesday</option>
+                <option value="3">Wednesday</option>
+                <option value="4">Thursday</option>
+                <option value="5" selected>Friday</option>
+                <option value="6">Saturday</option>
+                <option value="0">Sunday</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="stxWeeklyStartInput">Start Month *</label>
+              <input type="month" id="stxWeeklyStartInput" />
+            </div>
+            <div class="field-group">
+              <label for="stxWeeklyEndInput">End Month (optional)</label>
+              <input type="month" id="stxWeeklyEndInput" />
+            </div>
+          </div>
+        </div>
+
+        <div id="stxMonthlyFields" class="schedule-box hidden">
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="stxDayOfMonthInput">Day of Month (1–31)</label>
+              <input type="number" id="stxDayOfMonthInput" min="1" max="31" value="1" />
+            </div>
+            <div class="field-group">
+              <label for="stxMonthlyStartInput">Start Month *</label>
+              <input type="month" id="stxMonthlyStartInput" />
+            </div>
+            <div class="field-group">
+              <label for="stxMonthlyEndInput">End Month (optional)</label>
+              <input type="month" id="stxMonthlyEndInput" />
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid-2">
+          <div class="field-group">
+            <label for="stxStatusInput">Status in <span id="stxStatusMonthLabel">selected month</span></label>
+            <select id="stxStatusInput">
+              <option value="pending">Upcoming / Scheduled</option>
+              <option value="paid">Paid / Completed</option>
+              <option value="skipped">Skipped this month</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label for="stxNoteInput">Note / Reason</label>
+            <input type="text" id="stxNoteInput" placeholder="e.g. Monthly ISA standing order, Weekly holiday pot, Car asset equity" />
+          </div>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-ghost" data-close-modal="savingsTxModal">Cancel</button>
-          <button type="submit" class="btn btn-savings" id="stxSubmitBtn">Save Movement</button>
+          <button type="submit" class="btn btn-savings" id="stxSubmitBtn">Save Payment / Movement</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MANAGE HOUSEHOLD MEMBERS & PAYER ACCOUNTS -->
+  <div id="membersModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="membersModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="membersModalTitle">Household Members &amp; Payer Accounts</h2>
+        <button type="button" class="modal-close" data-close-modal="membersModal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="panel-subtitle">Set up joint or personal accounts so you can label who pays each bill, who owns savings/assets, and which member's account funds allocations.</p>
+
+        <div id="membersManageList" class="members-manage-list"></div>
+
+        <form id="addMemberForm" class="schedule-box">
+          <label class="field-label-small" style="display:block;margin-bottom:8px;">Add New Member / Payer Account</label>
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label for="newMemberNameInput">Account / Member Name *</label>
+              <input type="text" id="newMemberNameInput" required placeholder="e.g. Alex Card, Joint Bills" />
+            </div>
+            <div class="field-group">
+              <label for="newMemberRoleInput">Account Type</label>
+              <select id="newMemberRoleInput">
+                <option value="personal">Personal Account</option>
+                <option value="joint">Joint Account</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label for="newMemberColorInput">Label Color</label>
+              <input type="color" id="newMemberColorInput" value="#f59e0b" class="input-color" />
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary btn-sm">+ Add Member / Account</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 

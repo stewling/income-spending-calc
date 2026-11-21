@@ -14,6 +14,12 @@ function shiftMonth(monthStr, offset) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 }
 
+const DEFAULT_MEMBERS = [
+  { id: 'mem_joint', name: 'Joint Account', role: 'joint', color: '#38bdf8' },
+  { id: 'mem_mine', name: 'My Account', role: 'personal', color: '#10b981' },
+  { id: 'mem_partner', name: 'Partner Account', role: 'personal', color: '#a78bfa' }
+];
+
 function createEmptyState() {
   return {
     version: 1,
@@ -23,6 +29,7 @@ function createEmptyState() {
       safetyBuffer: 250,
       householdName: 'Household Finance Hub'
     },
+    members: DEFAULT_MEMBERS.map((m) => ({ ...m })),
     entries: [],
     monthOverrides: {},
     savingsAccounts: [],
@@ -40,6 +47,8 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
   const mPlus3 = shiftMonth(anchorMonth, 3);
   const mPlus4 = shiftMonth(anchorMonth, 4);
 
+  const members = DEFAULT_MEMBERS.map((m) => ({ ...m }));
+
   const entries = [
     // --- MONTHLY RECURRING INCOMES ---
     {
@@ -56,6 +65,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_mine',
       notes: 'Net monthly take-home pay',
       createdAt: `${mMinus3}-01T09:00:00.000Z`
     },
@@ -73,6 +83,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_partner',
       notes: 'Net monthly salary transfer',
       createdAt: `${mMinus3}-01T09:05:00.000Z`
     },
@@ -91,6 +102,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: false,
+      memberId: 'mem_mine',
       notes: 'Paid every Friday',
       createdAt: `${mMinus3}-02T10:00:00.000Z`
     },
@@ -109,6 +121,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: false,
+      memberId: 'mem_mine',
       notes: 'Overpaid tax refund received in bank',
       createdAt: `${mMinus2}-14T11:00:00.000Z`
     },
@@ -126,6 +139,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: false,
+      memberId: 'mem_joint',
       notes: 'Sold unused tech & winter gear',
       createdAt: `${mNow}-09T14:20:00.000Z`
     },
@@ -143,6 +157,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: false,
+      memberId: 'mem_mine',
       notes: 'Expected net year-end bonus',
       createdAt: `${mNow}-01T09:00:00.000Z`
     },
@@ -162,6 +177,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Fixed monthly housing payment',
       createdAt: `${mMinus3}-01T09:00:00.000Z`
     },
@@ -179,6 +195,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Local authority monthly DD',
       createdAt: `${mMinus3}-01T09:10:00.000Z`
     },
@@ -196,6 +213,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Dual fuel fixed monthly DD',
       createdAt: `${mMinus3}-01T09:15:00.000Z`
     },
@@ -213,6 +231,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Monthly water & sewerage',
       createdAt: `${mMinus3}-01T09:20:00.000Z`
     },
@@ -230,6 +249,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_mine',
       notes: 'Gigabit broadband + SIM plans',
       createdAt: `${mMinus3}-01T09:25:00.000Z`
     },
@@ -247,6 +267,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Buildings and contents cover',
       createdAt: `${mMinus3}-01T09:30:00.000Z`
     },
@@ -264,6 +285,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: false,
+      memberId: 'mem_partner',
       notes: 'Family music, TV & iCloud storage',
       createdAt: `${mMinus3}-01T09:35:00.000Z`
     },
@@ -283,6 +305,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Recurring Friday household food shop',
       createdAt: `${mMinus3}-01T10:00:00.000Z`
     },
@@ -300,6 +323,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Every Monday morning direct debit',
       createdAt: `${mMinus3}-01T10:05:00.000Z`
     },
@@ -317,6 +341,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: mMinus3,
       endMonth: null,
       essential: false,
+      memberId: 'mem_mine',
       notes: 'Wednesday commuter rail & swim pass',
       createdAt: `${mMinus3}-01T10:10:00.000Z`
     },
@@ -336,6 +361,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: false,
+      memberId: 'mem_joint',
       notes: 'Cottage booking & fuel',
       createdAt: `${mMinus3}-19T12:00:00.000Z`
     },
@@ -353,6 +379,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: true,
+      memberId: 'mem_partner',
       notes: 'Seasonal clothing & raincoats',
       createdAt: `${mMinus2}-07T15:00:00.000Z`
     },
@@ -370,6 +397,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: true,
+      memberId: 'mem_joint',
       notes: 'Gas Safe annual check',
       createdAt: `${mMinus1}-16T11:30:00.000Z`
     },
@@ -387,6 +415,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: true,
+      memberId: 'mem_mine',
       notes: 'Annual garage service + brake fluid',
       createdAt: `${mNow}-12T10:15:00.000Z`
     },
@@ -404,6 +433,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: false,
+      memberId: 'mem_partner',
       notes: 'Scheduled one-off purchase',
       createdAt: `${mNow}-10T16:00:00.000Z`
     },
@@ -421,6 +451,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: false,
+      memberId: 'mem_joint',
       notes: 'Planned December holiday budget',
       createdAt: `${mNow}-05T09:00:00.000Z`
     },
@@ -438,6 +469,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: true,
+      memberId: 'mem_mine',
       notes: 'Paid annually to avoid monthly APR',
       createdAt: `${mNow}-05T09:15:00.000Z`
     },
@@ -455,6 +487,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: true,
+      memberId: 'mem_partner',
       notes: 'Routine 6-month checkup',
       createdAt: `${mNow}-05T09:30:00.000Z`
     },
@@ -472,6 +505,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       startMonth: null,
       endMonth: null,
       essential: false,
+      memberId: 'mem_joint',
       notes: 'Easter getaway advance deposit',
       createdAt: `${mNow}-05T09:45:00.000Z`
     }
@@ -486,7 +520,8 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     [`out_dd_water_${mNow}`]: { status: 'paid' },
     [`out_dd_broadband_${mNow}`]: { status: 'paid' },
     [`out_oneoff_car_mot_${mNow}`]: { status: 'paid' },
-    [`inc_oneoff_vinted_${mNow}`]: { status: 'paid' }
+    [`inc_oneoff_vinted_${mNow}`]: { status: 'paid' },
+    [`stx_monthly_emergency_${mNow}`]: { status: 'paid' }
   };
 
   const savingsAccounts = [
@@ -494,10 +529,11 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'sav_emergency',
       name: 'Emergency Fund (Easy Access)',
       type: 'savings',
+      memberId: 'mem_joint',
       openingBalance: 7400,
       targetAmount: 12000,
       interestRate: 4.65,
-      allocationWeight: 40,
+      allocationWeight: 35,
       color: '#10b981',
       notes: '6-month household safety cushion',
       createdAt: `${mMinus3}-01T08:00:00.000Z`
@@ -506,10 +542,11 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'sav_isa',
       name: 'Stocks & Shares ISA',
       type: 'isa',
+      memberId: 'mem_mine',
       openingBalance: 14200,
       targetAmount: 25000,
       interestRate: 7.2,
-      allocationWeight: 35,
+      allocationWeight: 30,
       color: '#6366f1',
       notes: 'Long-term global index tracker',
       createdAt: `${mMinus3}-01T08:05:00.000Z`
@@ -518,6 +555,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'sav_holiday',
       name: 'Holiday & Travel Pot',
       type: 'cash',
+      memberId: 'mem_partner',
       openingBalance: 1150,
       targetAmount: 3000,
       interestRate: 3.8,
@@ -530,6 +568,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'sav_home',
       name: 'Home Improvement Reserve',
       type: 'savings',
+      memberId: 'mem_joint',
       openingBalance: 3200,
       targetAmount: 8000,
       interestRate: 4.4,
@@ -542,12 +581,13 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'asset_family_car',
       name: 'Family Car (Estimated Asset)',
       type: 'asset',
+      memberId: 'mem_joint',
       openingBalance: 11500,
-      targetAmount: 0,
+      targetAmount: 15000,
       interestRate: 0,
-      allocationWeight: 0,
+      allocationWeight: 10,
       color: '#8b5cf6',
-      notes: 'Tracked physical asset value',
+      notes: 'Tracked physical asset & replacement equity',
       createdAt: `${mMinus3}-01T08:20:00.000Z`
     }
   ];
@@ -556,10 +596,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_1',
       accountId: 'sav_emergency',
+      memberId: 'mem_joint',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 600,
       date: `${mMinus3}-29`,
       month: mMinus3,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'Monthly surplus allocation',
       createdAt: `${mMinus3}-29T18:00:00.000Z`
@@ -567,10 +613,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_2',
       accountId: 'sav_isa',
+      memberId: 'mem_mine',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 550,
       date: `${mMinus3}-29`,
       month: mMinus3,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'Automated ISA transfer',
       createdAt: `${mMinus3}-29T18:05:00.000Z`
@@ -578,10 +630,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_3',
       accountId: 'sav_holiday',
+      memberId: 'mem_joint',
       type: 'withdrawal',
+      frequency: 'one-off',
       amount: 280,
       date: `${mMinus3}-20`,
       month: mMinus3,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Withdrawal',
       note: 'Covered summer weekend extras',
       createdAt: `${mMinus3}-20T12:00:00.000Z`
@@ -589,10 +647,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_4',
       accountId: 'sav_emergency',
+      memberId: 'mem_joint',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 700,
       date: `${mMinus2}-29`,
       month: mMinus2,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'Allocated tax rebate + surplus',
       createdAt: `${mMinus2}-29T18:00:00.000Z`
@@ -600,10 +664,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_5',
       accountId: 'sav_isa',
+      memberId: 'mem_mine',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 600,
       date: `${mMinus2}-29`,
       month: mMinus2,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'ISA monthly contribution',
       createdAt: `${mMinus2}-29T18:05:00.000Z`
@@ -611,10 +681,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_6',
       accountId: 'sav_holiday',
+      memberId: 'mem_partner',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 350,
       date: `${mMinus2}-29`,
       month: mMinus2,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'Replenish travel pot',
       createdAt: `${mMinus2}-29T18:10:00.000Z`
@@ -622,10 +698,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_7',
       accountId: 'sav_emergency',
+      memberId: 'mem_joint',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 550,
       date: `${mMinus1}-29`,
       month: mMinus1,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'October surplus transfer',
       createdAt: `${mMinus1}-29T18:00:00.000Z`
@@ -633,10 +715,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_8',
       accountId: 'sav_isa',
+      memberId: 'mem_mine',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 550,
       date: `${mMinus1}-29`,
       month: mMinus1,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'ISA monthly contribution',
       createdAt: `${mMinus1}-29T18:05:00.000Z`
@@ -644,10 +732,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_9',
       accountId: 'sav_home',
+      memberId: 'mem_joint',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 450,
       date: `${mMinus1}-29`,
       month: mMinus1,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'Home reserve addition',
       createdAt: `${mMinus1}-29T18:10:00.000Z`
@@ -655,10 +749,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_10',
       accountId: 'sav_home',
+      memberId: 'mem_joint',
       type: 'withdrawal',
+      frequency: 'one-off',
       amount: 190,
       date: `${mNow}-05`,
       month: mNow,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Withdrawal',
       note: 'Bought hallway radiator valve & tools',
       createdAt: `${mNow}-05T11:30:00.000Z`
@@ -666,10 +766,16 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_11',
       accountId: 'sav_isa',
+      memberId: 'mem_mine',
       type: 'deposit',
+      frequency: 'one-off',
       amount: 400,
       date: `${mNow}-02`,
       month: mNow,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Monthly Allocation',
       note: 'Early-month standing ISA order',
       createdAt: `${mNow}-02T09:00:00.000Z`
@@ -677,13 +783,71 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'stx_12',
       accountId: 'asset_family_car',
+      memberId: 'mem_joint',
       type: 'adjustment',
+      frequency: 'one-off',
       amount: -250,
       date: `${mNow}-01`,
       month: mNow,
+      dayOfMonth: null,
+      dayOfWeek: null,
+      startMonth: null,
+      endMonth: null,
       category: 'Valuation Update',
       note: 'Quarterly car depreciation check',
       createdAt: `${mNow}-01T09:00:00.000Z`
+    },
+    // --- RECURRING MONTHLY & WEEKLY SAVINGS / ASSET PAYMENTS ---
+    {
+      id: 'stx_monthly_emergency',
+      accountId: 'sav_emergency',
+      memberId: 'mem_joint',
+      type: 'deposit',
+      frequency: 'monthly',
+      amount: 200,
+      date: null,
+      month: null,
+      dayOfMonth: 28,
+      dayOfWeek: null,
+      startMonth: mNow,
+      endMonth: null,
+      category: 'Monthly Standing Order',
+      note: 'Automated monthly emergency fund top-up',
+      createdAt: `${mNow}-01T08:00:00.000Z`
+    },
+    {
+      id: 'stx_weekly_holiday',
+      accountId: 'sav_holiday',
+      memberId: 'mem_partner',
+      type: 'deposit',
+      frequency: 'weekly',
+      amount: 30,
+      date: null,
+      month: null,
+      dayOfMonth: null,
+      dayOfWeek: 5,
+      startMonth: mNow,
+      endMonth: null,
+      category: 'Weekly Savings Rule',
+      note: 'Every Friday holiday pot transfer',
+      createdAt: `${mNow}-01T08:05:00.000Z`
+    },
+    {
+      id: 'stx_monthly_car_asset',
+      accountId: 'asset_family_car',
+      memberId: 'mem_mine',
+      type: 'deposit',
+      frequency: 'monthly',
+      amount: 120,
+      date: null,
+      month: null,
+      dayOfMonth: 15,
+      dayOfWeek: null,
+      startMonth: mNow,
+      endMonth: null,
+      category: 'Asset Contribution',
+      note: 'Monthly vehicle replacement & equity build',
+      createdAt: `${mNow}-01T08:10:00.000Z`
     }
   ];
 
@@ -695,6 +859,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       safetyBuffer: 250,
       householdName: 'Household Finance Hub'
     },
+    members,
     entries,
     monthOverrides,
     savingsAccounts,
@@ -703,6 +868,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
 }
 
 module.exports = {
+  DEFAULT_MEMBERS,
   createSeedState,
   createEmptyState,
   getCurrentMonth,

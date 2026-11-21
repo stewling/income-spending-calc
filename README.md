@@ -72,24 +72,27 @@ Copy direct LAN/remote URLs for phones and tablets, inspect SQLite/JSON/browser 
   - Remove a recurring direct debit by choosing **"Stop from this month onwards (keep past history)"** or **"Delete completely from all months"**.
 - **One-Click Status Cycling:** Toggle any item between `Paid / Received`, `Upcoming`, and `Skipped` for the viewed month.
 
-### 3. Outgoings Visual Breakdown & Interactive Savings Allocator
-- **Outgoings Breakdown Sidebar:** Visual stacked bar comparing Monthly DDs, Weekly DDs, and One-Offs alongside category-by-category progress bars.
-- **Interactive Savings Allocator:**
-  - Calculates **Remaining Available to Allocate** from `Money Left Over - Current Account Safety Buffer - Savings Already Added This Month`.
-  - Auto-split leftover cash across your savings accounts using customizable allocation weights (or enter manual amounts per account).
-  - Click **Transfer Planned Allocation to Savings** to log dated deposit entries straight into your savings ledger.
+### 3. Household Members, Payer Accounts & Interactive Allocator
+- **Members & Payer Accounts (`Members & Accounts` Modal):** Set up joint and personal accounts (defaulting to `Joint Account`, `My Account`, and `Partner Account`, with custom names, roles, and label colors).
+- **Site-Wide Payer & Owner Labeling:** Label every income, outgoing, direct debit, savings/asset account, and savings payment with which member pays or owns it—displayed as colored badges across Overview, Savings & Assets, and Global Search.
+- **By Member / Payer Account Breakdown & Global Filter:** View each member's monthly income, outgoings, leftover cash, and savings/asset allocations side-by-side, or filter the dashboard and search results to a specific member's account.
+- **Outgoings Visual Breakdown:** Visual stacked bar comparing Monthly DDs, Weekly DDs, and One-Offs alongside category-by-category progress bars.
+- **Interactive Savings & Assets Allocator:**
+  - Choose **Allocate From Member / Account** (whole household or any individual member) and calculate **Remaining Available to Allocate** after your current-account safety buffer.
+  - Auto-split or manually allocate leftover cash into **both Savings Accounts and Asset Accounts** using customizable allocation weights.
+  - Click **Transfer Planned Allocation to Savings & Assets** to log labeled deposit entries straight into your savings ledger.
 
-### 4. Savings Accounts & Assets Tracker
-- **Track Cash & Physical Assets Together:** Supports `Savings Account`, `ISA / Tax-Free Savings`, `Investment / Shares`, `Cash / Sinking Pot`, and `Physical Asset / Property`.
-- **Per-Account Insights:** Displays balance as of the selected month, live balance today, monthly net change, goal target progress bar, interest/growth rate, and allocation weight.
-- **Balance Change Actions:** Record **`+ Add Money`** (deposits), **`- Remove Money`** (withdrawals), and **`Adjust (+/-)`** (interest, dividends, or asset valuation updates).
-- **Savings & Asset Change History:** Filterable chronological ledger by account, month scope (`All Months` vs. `Selected Month Only`), movement type, and search notes.
+### 4. Savings Accounts, Assets & Recurring Payments
+- **Track Cash & Physical Assets Together:** Supports `Savings Account`, `ISA / Tax-Free Savings`, `Investment / Shares`, `Cash / Sinking Pot`, and `Physical Asset / Property` with owner badges and goal progress bars.
+- **Monthly, Weekly & One-Off Savings / Asset Payments:** Schedule recurring **Monthly** standing orders, **Weekly** transfer rules, or **One-Off** additions, removals, and valuation adjustments for any savings account or asset—with per-month overrides, `Paid`/`Upcoming`/`Skipped` status toggles, and non-destructive stopping ("Stop from this month onwards").
+- **Quick Balance Actions:** Use **`+ Add Money`**, **`- Remove`**, **`Allocate`**, and **`Adjust`** directly on any savings or asset card.
+- **Savings & Asset Change History:** Filterable chronological ledger by account, member, schedule frequency (`Monthly`, `Weekly`, `One-Off`), month scope, movement type, and search notes.
 
 ### 5. 12-Month Rolling Projection & Global Search Explorer
 - **12-Month Rolling Chart & Cashflow Table:** Side-by-side comparison spanning 5 months back through 6 months ahead (`Income`, `Monthly DDs`, `Weekly DDs`, `One-Offs`, `Total Outgoings`, `Left Over`, `Savings Added`, `Rolling Cash Carry`, and `Total Savings & Assets`). Clicking any month opens it directly.
 - **Global Search Across All Past, Current & Future Payments:**
-  - Full-text search across names, categories, notes, dates, and accounts.
-  - Filter by **Time Window** (`All Months`, `Past Months Only`, `Current Month Only`, `Future Payments Only`, or a custom `From`–`To` month range), **Record Type** (`Outgoings`, `Incomes`, `Savings & Asset Changes`), **Frequency**, **Category**, and **Status**.
+  - Full-text search across names, categories, member accounts, notes, dates, and savings/asset pots.
+  - Filter by **Time Window** (`All Months`, `Past Months Only`, `Current Month Only`, `Future Payments Only`, or a custom `From`–`To` month range), **Record Type** (`Outgoings`, `Incomes`, `Savings & Asset Changes`), **Frequency**, **Category**, **Paid By / Member**, and **Status**.
   - Click **Open Month** on any search result to jump directly to that month.
 
 ### 6. Local-First Storage, Offline Caching & Real-Time LAN Sync

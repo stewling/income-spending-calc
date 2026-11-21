@@ -18,6 +18,11 @@
     cash: 'Cash / Sinking Pot',
     asset: 'Physical Asset'
   };
+  const DEFAULT_MEMBERS = [
+    { id: 'mem_joint', name: 'Joint Account', role: 'joint', color: '#38bdf8' },
+    { id: 'mem_mine', name: 'My Account', role: 'personal', color: '#10b981' },
+    { id: 'mem_partner', name: 'Partner Account', role: 'personal', color: '#a78bfa' }
+  ];
   const CATEGORY_COLORS = [
     '#38bdf8', '#818cf8', '#10b981', '#f59e0b',
     '#f43f5e', '#a78bfa', '#06b6d4', '#fb7185', '#34d399'
@@ -173,14 +178,71 @@
     selectedMonth: getCurrentMonth(),
     activeTab: 'overview',
     outgoingFilter: 'all',
+    savingsFilter: 'all',
+    memberFilter: 'all',
+    allocMemberId: 'all',
     plannedAllocations: {},
     syncInFlight: false,
     syncQueued: false,
     entryModalKind: 'outgoing',
     entryModalFreq: 'monthly',
     stxModalType: 'deposit',
-    pendingDeleteId: null
+    stxModalFreq: 'one-off',
+    pendingDeleteId: null,
+    pendingDeleteKind: 'entry'
   };
+
+  // --- MEMBER HELPERS ---
+  function getMembers(state = runtime.state) {
+    return Array.isArray(state?.members) && state.members.length ? state.members : DEFAULT_MEMBERS;
+  }
+
+  function getMemberById(memberId, state = runtime.state) {
+    const members = getMembers(state);
+    return members.find((m) => m.id === memberId) || members[0];
+  }
+
+  function renderMemberBadge(memberId, state = runtime.state) {
+    const member = getMemberById(memberId, state);
+    const color = member?.color || '#38bdf8';
+    return `<span class="badge badge-member" style="border-color:${escapeHtml(color)}55"><span class="member-dot" style="background:${escapeHtml(color)}"></span>${escapeHtml(member?.name || 'Joint Account')}</span>`;
+  }
+
+  function populateMemberSelects() {
+    const members = getMembers();
+    const memberOptionsHtml = members
+      .map((m) => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}${m.role === 'joint' ? ' (Joint)' : ''}</option>`)
+      .join('');
+
+    const allFilterConfigs = [
+      { id: 'globalMemberFilter', allLabel: 'All Members & Accounts', stateKey: 'memberFilter' },
+      { id: 'allocMemberSelect', allLabel: 'Whole Household (Joint Default)', stateKey: 'allocMemberId' },
+      { id: 'ledgerMemberFilter', allLabel: 'All Members' },
+      { id: 'searchMemberFilter', allLabel: 'All Members & Accounts' }
+    ];
+
+    for (const cfg of allFilterConfigs) {
+      const el = document.getElementById(cfg.id);
+      if (!el) continue;
+      const prev = cfg.stateKey ? runtime[cfg.stateKey] : (el.value || 'all');
+      el.innerHTML = `<option value="all">${escapeHtml(cfg.allLabel)}</option>${memberOptionsHtml}`;
+      const valid = prev === 'all' || members.some((m) => m.id === prev);
+      el.value = valid ? prev : 'all';
+      if (cfg.stateKey) runtime[cfg.stateKey] = el.value;
+    }
+
+    for (const id of ['entryMemberSelect', 'savAccMemberSelect', 'stxMemberSelect']) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const prev = el.value;
+      el.innerHTML = memberOptionsHtml;
+      if (prev && members.some((m) => m.id === prev)) {
+        el.value = prev;
+      } else if (members[0]) {
+        el.value = members[0].id;
+      }
+    }
+  }
 
   // --- FORMATTING ---
   function formatMoney(amount, showPlus = false) {
@@ -212,19 +274,21 @@
   }
 
   // --- CALCULATION ENGINE ---
-  function isEntryActiveInMonth(entry, monthStr) {
-    if (!entry) return false;
-    if (entry.frequency === 'one-off') {
-      return entry.month === monthStr;
+  function isItemActiveInMonth(item, monthStr) {
+    if (!item) return false;
+    const freq = item.frequency || 'one-off';
+    if (freq === 'one-off') {
+      return item.month === monthStr;
     }
-    const afterStart = !entry.startMonth || entry.startMonth <= monthStr;
-    const beforeEnd = !entry.endMonth || entry.endMonth >= monthStr;
+    const afterStart = !item.startMonth || item.startMonth <= monthStr;
+    const beforeEnd = !item.endMonth || item.endMonth >= monthStr;
     return afterStart && beforeEnd;
   }
 
-  function resolveEntryForMonth(entry, monthStr, state = runtime.state) {
+  function resolveScheduleItemForMonth(item, monthStr, state = runtime.state, labelMode = 'dd') {
     const currentMonth = getCurrentMonth();
-    const overrideKey = `${entry.id}_${monthStr}`;
+    const freq = item.frequency || 'one-off';
+    const overrideKey = `${item.id}_${monthStr}`;
     const override = state.monthOverrides?.[overrideKey] || null;
     const defaultStatus = monthStr < currentMonth ? 'paid' : 'pending';
     const status = override?.status || defaultStatus;
@@ -233,40 +297,42 @@
     let occurrences = [];
     let multiplier = 1;
     let scheduleLabel = '';
+    const prefix = labelMode === 'savings' ? 'Payment' : 'DD';
 
-    if (entry.frequency === 'one-off') {
-      scheduleLabel = entry.date ? `One-Off • ${entry.date}` : `One-Off • ${formatMonthShort(monthStr)}`;
-    } else if (entry.frequency === 'monthly') {
-      const dom = entry.dayOfMonth || 1;
-      scheduleLabel = `Monthly DD • Day ${dom}`;
-    } else if (entry.frequency === 'weekly') {
-      const dow = entry.dayOfWeek ?? 5;
+    if (freq === 'one-off') {
+      scheduleLabel = item.date ? `One-Off • ${item.date}` : `One-Off • ${formatMonthShort(monthStr)}`;
+    } else if (freq === 'monthly') {
+      const dom = item.dayOfMonth || 1;
+      scheduleLabel = `Monthly ${prefix} • Day ${dom}`;
+    } else if (freq === 'weekly') {
+      const dow = item.dayOfWeek ?? 5;
       occurrences = getWeekdaysInMonth(monthStr, dow);
       if (weeklyMode === 'exact') {
         multiplier = occurrences.length;
-        scheduleLabel = `Weekly DD • ${WEEKDAYS[dow]}s (${multiplier}×)`;
+        scheduleLabel = `Weekly ${prefix} • ${WEEKDAYS[dow]}s (${multiplier}×)`;
       } else if (weeklyMode === 'four_week') {
         multiplier = 4;
-        scheduleLabel = `Weekly DD • ${WEEKDAYS[dow]}s (×4)`;
+        scheduleLabel = `Weekly ${prefix} • ${WEEKDAYS[dow]}s (×4)`;
       } else {
         multiplier = 52 / 12;
-        scheduleLabel = `Weekly DD • ${WEEKDAYS[dow]}s (×4.33)`;
+        scheduleLabel = `Weekly ${prefix} • ${WEEKDAYS[dow]}s (×4.33)`;
       }
     }
 
     const hasAmountOverride = override && override.amount !== undefined && override.amount !== null && override.amount !== '';
-    const baseUnitAmount = Number(entry.amount || 0);
+    const baseUnitAmount = Number(item.amount || 0);
     const computedAmount = hasAmountOverride
       ? Number(override.amount)
-      : entry.frequency === 'weekly'
+      : freq === 'weekly'
         ? Math.round(baseUnitAmount * multiplier * 100) / 100
         : baseUnitAmount;
 
     const effectiveAmount = status === 'skipped' ? 0 : computedAmount;
+    const memberId = override?.memberId || item.memberId || getMembers(state)[0]?.id;
 
     return {
-      entry,
       month: monthStr,
+      freq,
       status,
       override,
       hasAmountOverride,
@@ -276,22 +342,67 @@
       scheduleLabel,
       computedAmount,
       effectiveAmount,
-      note: override?.note || entry.notes || ''
+      memberId,
+      note: override?.note ?? item.notes ?? item.note ?? ''
     };
   }
 
-  function getSignedTxDelta(tx) {
-    const amt = Number(tx.amount || 0);
-    if (tx.type === 'deposit') return Math.abs(amt);
-    if (tx.type === 'withdrawal') return -Math.abs(amt);
-    return amt; // adjustment can be + or -
+  function resolveEntryForMonth(entry, monthStr, state = runtime.state) {
+    const resolved = resolveScheduleItemForMonth(entry, monthStr, state, 'dd');
+    return {
+      entry,
+      ...resolved
+    };
+  }
+
+  function resolveSavingsTxForMonth(tx, monthStr, state = runtime.state) {
+    const resolved = resolveScheduleItemForMonth(tx, monthStr, state, 'savings');
+    const eff = resolved.effectiveAmount;
+    let signedDelta = 0;
+    if (resolved.status !== 'skipped') {
+      if (tx.type === 'deposit') signedDelta = Math.abs(eff);
+      else if (tx.type === 'withdrawal') signedDelta = -Math.abs(eff);
+      else signedDelta = eff;
+    }
+    return {
+      tx,
+      ...resolved,
+      signedDelta: Math.round(signedDelta * 100) / 100
+    };
+  }
+
+  function getActiveSavingsTxsInMonth(monthStr, state = runtime.state, memberFilter = 'all') {
+    const list = [];
+    for (const tx of state.savingsTransactions || []) {
+      if (!isItemActiveInMonth(tx, monthStr)) continue;
+      const r = resolveSavingsTxForMonth(tx, monthStr, state);
+      if (memberFilter !== 'all' && r.memberId !== memberFilter) continue;
+      list.push(r);
+    }
+    return list;
   }
 
   function getAccountBalanceAtMonth(account, monthStr, state = runtime.state) {
     let balance = Number(account.openingBalance || 0);
     for (const tx of state.savingsTransactions || []) {
-      if (tx.accountId === account.id && tx.month <= monthStr) {
-        balance += getSignedTxDelta(tx);
+      if (tx.accountId !== account.id) continue;
+      const freq = tx.frequency || 'one-off';
+      if (freq === 'one-off') {
+        if (tx.month && tx.month <= monthStr) {
+          balance += resolveSavingsTxForMonth(tx, tx.month, state).signedDelta;
+        }
+      } else {
+        const start = tx.startMonth || monthStr;
+        const end = tx.endMonth && tx.endMonth < monthStr ? tx.endMonth : monthStr;
+        if (start <= end) {
+          let cursor = start;
+          let guard = 0;
+          while (cursor <= end && guard < 240) {
+            balance += resolveSavingsTxForMonth(tx, cursor, state).signedDelta;
+            cursor = shiftMonth(cursor, 1);
+            guard++;
+          }
+        }
       }
     }
     return Math.round(balance * 100) / 100;
@@ -302,27 +413,47 @@
     let removed = 0;
     let adjusted = 0;
     for (const tx of state.savingsTransactions || []) {
-      if (tx.accountId === accountId && tx.month === monthStr) {
-        if (tx.type === 'deposit') added += Math.abs(Number(tx.amount || 0));
-        else if (tx.type === 'withdrawal') removed += Math.abs(Number(tx.amount || 0));
-        else adjusted += Number(tx.amount || 0);
-      }
+      if (tx.accountId !== accountId || !isItemActiveInMonth(tx, monthStr)) continue;
+      const r = resolveSavingsTxForMonth(tx, monthStr, state);
+      if (r.status === 'skipped') continue;
+      if (tx.type === 'deposit') added += Math.abs(r.effectiveAmount);
+      else if (tx.type === 'withdrawal') removed += Math.abs(r.effectiveAmount);
+      else adjusted += r.effectiveAmount;
     }
     return {
-      added,
-      removed,
-      adjusted,
-      net: added - removed + adjusted
+      added: Math.round(added * 100) / 100,
+      removed: Math.round(removed * 100) / 100,
+      adjusted: Math.round(adjusted * 100) / 100,
+      net: Math.round((added - removed + adjusted) * 100) / 100
     };
   }
 
-  function computeMonthSummary(monthStr, state = runtime.state) {
+  function computeMonthSummary(monthStr, state = runtime.state, memberFilter = 'all') {
+    const members = getMembers(state);
+    const byMember = {};
+    for (const m of members) {
+      byMember[m.id] = {
+        member: m,
+        income: 0,
+        outgoing: 0,
+        savingsAdded: 0,
+        savingsRemoved: 0,
+        leftover: 0
+      };
+    }
+
     const incomes = [];
     const outgoings = [];
 
     for (const entry of state.entries || []) {
-      if (!isEntryActiveInMonth(entry, monthStr)) continue;
+      if (!isItemActiveInMonth(entry, monthStr)) continue;
       const resolved = resolveEntryForMonth(entry, monthStr, state);
+      const bucket = byMember[resolved.memberId];
+      if (bucket) {
+        if (entry.kind === 'income') bucket.income += resolved.effectiveAmount;
+        else bucket.outgoing += resolved.effectiveAmount;
+      }
+      if (memberFilter !== 'all' && resolved.memberId !== memberFilter) continue;
       if (entry.kind === 'income') incomes.push(resolved);
       else outgoings.push(resolved);
     }
@@ -355,21 +486,38 @@
       else flexibleOutgoings += r.effectiveAmount;
     }
 
-    // Savings activity in monthStr
+    // Savings & asset activity in monthStr (including recurring monthly/weekly & one-off)
+    const activeSavingsTxs = [];
     let savingsAdded = 0;
     let savingsRemoved = 0;
     let savingsAdjusted = 0;
+
     for (const tx of state.savingsTransactions || []) {
-      if (tx.month !== monthStr) continue;
-      if (tx.type === 'deposit') savingsAdded += Math.abs(Number(tx.amount || 0));
-      else if (tx.type === 'withdrawal') savingsRemoved += Math.abs(Number(tx.amount || 0));
-      else savingsAdjusted += Number(tx.amount || 0);
+      if (!isItemActiveInMonth(tx, monthStr)) continue;
+      const r = resolveSavingsTxForMonth(tx, monthStr, state);
+      const bucket = byMember[r.memberId];
+      if (bucket && r.status !== 'skipped') {
+        if (tx.type === 'deposit') bucket.savingsAdded += Math.abs(r.effectiveAmount);
+        else if (tx.type === 'withdrawal') bucket.savingsRemoved += Math.abs(r.effectiveAmount);
+      }
+      if (memberFilter !== 'all' && r.memberId !== memberFilter) continue;
+      activeSavingsTxs.push(r);
+      if (r.status === 'skipped') continue;
+      if (tx.type === 'deposit') savingsAdded += Math.abs(r.effectiveAmount);
+      else if (tx.type === 'withdrawal') savingsRemoved += Math.abs(r.effectiveAmount);
+      else savingsAdjusted += r.effectiveAmount;
+    }
+
+    for (const id of Object.keys(byMember)) {
+      byMember[id].leftover = byMember[id].income - byMember[id].outgoing;
     }
 
     let totalSavingsAtMonth = 0;
     let totalSavingsLive = 0;
     const currentMonth = getCurrentMonth();
     for (const acc of state.savingsAccounts || []) {
+      const ownerId = acc.memberId || members[0]?.id;
+      if (memberFilter !== 'all' && ownerId !== memberFilter) continue;
       totalSavingsAtMonth += getAccountBalanceAtMonth(acc, monthStr, state);
       totalSavingsLive += getAccountBalanceAtMonth(acc, currentMonth, state);
     }
@@ -382,6 +530,8 @@
       month: monthStr,
       incomes,
       outgoings,
+      activeSavingsTxs,
+      byMember,
       totalIncome,
       incBreakdown,
       totalOutgoings,
@@ -547,6 +697,7 @@
     document.getElementById('currencySelect').value = state.settings?.currency || 'GBP';
     document.getElementById('weeklyModeSelect').value = state.settings?.weeklyCalcMode || 'exact';
     document.getElementById('monthPickerInput').value = runtime.selectedMonth;
+    populateMemberSelects();
   }
 
   function renderMonthNavigator() {
@@ -556,7 +707,7 @@
 
     for (let offset = -4; offset <= 4; offset++) {
       const m = shiftMonth(runtime.selectedMonth, offset);
-      const summary = computeMonthSummary(m);
+      const summary = computeMonthSummary(m, runtime.state, runtime.memberFilter);
       const horizon = getHorizon(m, currentMonth);
       const isSelected = m === runtime.selectedMonth;
       const tagLabel = horizon === 'past' ? 'Past' : horizon === 'current' ? 'Now' : 'Future';
@@ -646,6 +797,7 @@
           <div class="entry-title-line">
             <span class="entry-title">${escapeHtml(e.title)}</span>
             <span class="badge badge-${e.frequency}">${escapeHtml(r.scheduleLabel)}</span>
+            ${renderMemberBadge(r.memberId)}
             ${e.kind === 'outgoing' && e.essential !== false ? '<span class="badge badge-essential">Essential</span>' : ''}
             ${r.hasAmountOverride ? '<span class="badge badge-override">Month Override</span>' : ''}
           </div>
@@ -668,6 +820,39 @@
         </div>
       </div>
     `;
+  }
+
+  function renderMemberBreakdown(summary) {
+    const el = document.getElementById('memberBreakdownList');
+    if (!el) return;
+    const rows = Object.values(summary.byMember || {});
+    if (!rows.length) {
+      el.innerHTML = '<div class="text-muted" style="font-size:0.82rem;">No members configured yet.</div>';
+      return;
+    }
+
+    el.innerHTML = rows.map((item) => {
+      const m = item.member;
+      const netAfterSav = item.leftover - item.savingsAdded;
+      return `
+        <div class="member-row">
+          <div class="member-row-head">
+            <div class="member-row-title">
+              <span class="member-dot" style="background:${escapeHtml(m.color || '#38bdf8')}"></span>
+              <span>${escapeHtml(m.name)}</span>
+            </div>
+            <button type="button" class="icon-btn" data-filter-member="${escapeHtml(m.id)}" title="Filter view to ${escapeHtml(m.name)}">
+              ${runtime.memberFilter === m.id ? 'Showing' : 'Filter'}
+            </button>
+          </div>
+          <div class="member-row-stats">
+            <div><span>In</span><strong class="text-emerald">${escapeHtml(formatMoney(item.income))}</strong></div>
+            <div><span>Out</span><strong class="text-rose">${escapeHtml(formatMoney(item.outgoing))}</strong></div>
+            <div><span>Left / Sav</span><strong class="${netAfterSav >= 0 ? 'text-sky' : 'text-rose'}">${escapeHtml(formatMoney(item.leftover))} / ${escapeHtml(formatMoney(item.savingsAdded))}</strong></div>
+          </div>
+        </div>
+      `;
+    }).join('');
   }
 
   function renderEntriesLists(summary) {
@@ -754,7 +939,7 @@
   }
 
   function computeAutoSplitAllocations(available) {
-    const accounts = (runtime.state.savingsAccounts || []).filter((a) => a.type !== 'asset');
+    const accounts = runtime.state.savingsAccounts || [];
     const result = {};
     if (available <= 0 || !accounts.length) {
       for (const a of accounts) result[a.id] = 0;
@@ -764,7 +949,7 @@
     let totalWeight = accounts.reduce((acc, a) => acc + Math.max(0, Number(a.allocationWeight || 0)), 0);
     if (totalWeight <= 0) totalWeight = accounts.length;
 
-    let remaining = Math.round(available * 100);
+    const remaining = Math.round(available * 100);
     const weighted = accounts.map((a) => ({
       id: a.id,
       weight: totalWeight === accounts.length && Number(a.allocationWeight || 0) <= 0 ? 1 : Math.max(0, Number(a.allocationWeight || 0))
@@ -790,32 +975,65 @@
     return result;
   }
 
-  function renderSavingsAllocatorAndSnapshot(summary) {
-    document.getElementById('allocLeftover').textContent = formatMoney(summary.moneyLeftOver);
-    document.getElementById('safetyBufferInput').value = summary.safetyBuffer;
-    document.getElementById('allocAlreadyMoved').textContent = formatMoney(summary.savingsAdded);
-    document.getElementById('allocAvailable').textContent = formatMoney(summary.allocatableSurplus);
+  function getAllocatorSurplusContext(monthStr) {
+    const fullSummary = computeMonthSummary(monthStr, runtime.state, 'all');
+    const selectedMemberId = runtime.allocMemberId || 'all';
+    const members = getMembers();
+    const defaultJoint = members.find((m) => m.role === 'joint') || members[0];
 
-    const savingsOnly = (runtime.state.savingsAccounts || []).filter((a) => a.type !== 'asset');
+    if (selectedMemberId === 'all') {
+      return {
+        sourceMemberId: defaultJoint ? defaultJoint.id : 'mem_joint',
+        label: 'Money left over (Income - Outgoings)',
+        leftover: fullSummary.moneyLeftOver,
+        alreadyMoved: fullSummary.savingsAdded,
+        safetyBuffer: fullSummary.safetyBuffer,
+        available: fullSummary.allocatableSurplus
+      };
+    }
+
+    const member = getMemberById(selectedMemberId);
+    const stats = fullSummary.byMember[selectedMemberId] || { income: 0, outgoing: 0, savingsAdded: 0, leftover: 0 };
+    const available = Math.max(0, stats.leftover - fullSummary.safetyBuffer - stats.savingsAdded);
+    return {
+      sourceMemberId: selectedMemberId,
+      label: `Money left over (${member?.name || 'Member'})`,
+      leftover: stats.leftover,
+      alreadyMoved: stats.savingsAdded,
+      safetyBuffer: fullSummary.safetyBuffer,
+      available
+    };
+  }
+
+  function renderSavingsAllocatorAndSnapshot(summary) {
+    const ctx = getAllocatorSurplusContext(summary.month);
+    document.getElementById('allocLeftoverLabel').textContent = ctx.label;
+    document.getElementById('allocLeftover').textContent = formatMoney(ctx.leftover);
+    document.getElementById('safetyBufferInput').value = ctx.safetyBuffer;
+    document.getElementById('allocAlreadyMoved').textContent = formatMoney(ctx.alreadyMoved);
+    document.getElementById('allocAvailable').textContent = formatMoney(ctx.available);
+
+    const accounts = runtime.state.savingsAccounts || [];
     const listEl = document.getElementById('allocatorAccountsList');
 
     // Initialize defaults if none set yet for current month
-    const hasValues = savingsOnly.some((a) => runtime.plannedAllocations[a.id] !== undefined);
+    const hasValues = accounts.some((a) => runtime.plannedAllocations[a.id] !== undefined);
     if (!hasValues) {
-      runtime.plannedAllocations = computeAutoSplitAllocations(summary.allocatableSurplus);
+      runtime.plannedAllocations = computeAutoSplitAllocations(ctx.available);
     }
 
-    if (!savingsOnly.length) {
-      listEl.innerHTML = '<div class="text-muted" style="font-size:0.82rem;">Add a savings account to allocate leftover funds.</div>';
+    if (!accounts.length) {
+      listEl.innerHTML = '<div class="text-muted" style="font-size:0.82rem;">Add a savings or asset account to allocate leftover funds.</div>';
     } else {
-      listEl.innerHTML = savingsOnly.map((acc) => {
+      listEl.innerHTML = accounts.map((acc) => {
         const val = Number(runtime.plannedAllocations[acc.id] ?? 0);
         const bal = getAccountBalanceAtMonth(acc, summary.month);
+        const typeTag = acc.type === 'asset' ? 'Asset' : (ACCOUNT_TYPE_LABELS[acc.type] || 'Savings');
         return `
           <div class="alloc-acc-row">
             <div class="alloc-acc-info">
               <span class="alloc-acc-name">${escapeHtml(acc.name)}</span>
-              <span class="alloc-acc-sub">Bal: ${escapeHtml(formatMoney(bal))} • Weight ${Number(acc.allocationWeight || 0)}%</span>
+              <span class="alloc-acc-sub">${escapeHtml(typeTag)} • Bal: ${escapeHtml(formatMoney(bal))} • Weight ${Number(acc.allocationWeight || 0)}%</span>
             </div>
             <input
               type="number"
@@ -830,17 +1048,20 @@
       }).join('');
     }
 
-    const plannedSum = savingsOnly.reduce((s, a) => s + Math.max(0, Number(runtime.plannedAllocations[a.id] || 0)), 0);
+    const plannedSum = accounts.reduce((s, a) => s + Math.max(0, Number(runtime.plannedAllocations[a.id] || 0)), 0);
     document.getElementById('allocPlannedTotal').textContent = formatMoney(plannedSum);
 
     // Quick snapshot card
     document.getElementById('snapshotSubtitle').textContent = `Balances through ${formatMonthShort(summary.month)}`;
     const snapEl = document.getElementById('savingsSnapshotList');
-    const allAccounts = runtime.state.savingsAccounts || [];
-    if (!allAccounts.length) {
-      snapEl.innerHTML = '<div class="text-muted" style="font-size:0.82rem;">No savings or assets added yet.</div>';
+    const filteredAccounts = runtime.memberFilter === 'all'
+      ? accounts
+      : accounts.filter((a) => (a.memberId || getMembers()[0]?.id) === runtime.memberFilter);
+
+    if (!filteredAccounts.length) {
+      snapEl.innerHTML = '<div class="text-muted" style="font-size:0.82rem;">No savings or assets match the selected member filter.</div>';
     } else {
-      snapEl.innerHTML = allAccounts.map((acc) => {
+      snapEl.innerHTML = filteredAccounts.map((acc) => {
         const bal = getAccountBalanceAtMonth(acc, summary.month);
         return `
           <div class="snapshot-row">
@@ -848,11 +1069,11 @@
               <span class="swatch" style="background:${escapeHtml(acc.color || '#38bdf8')}"></span>
               <div style="min-width:0">
                 <div class="alloc-acc-name">${escapeHtml(acc.name)}</div>
-                <div class="alloc-acc-sub">${escapeHtml(formatMoney(bal))}</div>
+                <div class="alloc-acc-sub">${escapeHtml(formatMoney(bal))} • ${escapeHtml(getMemberById(acc.memberId)?.name || 'Joint')}</div>
               </div>
             </div>
             <div class="snapshot-actions">
-              <button type="button" class="icon-btn" title="Add money" data-quick-stx="deposit" data-acc-id="${escapeHtml(acc.id)}">+</button>
+              <button type="button" class="icon-btn" title="Add money / allocate" data-quick-stx="deposit" data-acc-id="${escapeHtml(acc.id)}">+</button>
               <button type="button" class="icon-btn" title="Remove money" data-quick-stx="withdrawal" data-acc-id="${escapeHtml(acc.id)}">-</button>
             </div>
           </div>
@@ -861,8 +1082,82 @@
     }
   }
 
+  function renderSavingsScheduledList(summary) {
+    const accountMap = Object.fromEntries((runtime.state.savingsAccounts || []).map((a) => [a.id, a]));
+    const filter = runtime.savingsFilter;
+    const list = (summary.activeSavingsTxs || []).filter((r) => {
+      if (filter === 'all') return true;
+      if (filter === 'deposit' || filter === 'withdrawal') return r.tx.type === filter;
+      return (r.tx.frequency || 'one-off') === filter;
+    });
+
+    const freqOrder = { monthly: 1, weekly: 2, 'one-off': 3 };
+    list.sort((a, b) => (freqOrder[a.freq] - freqOrder[b.freq]) || (Math.abs(b.effectiveAmount) - Math.abs(a.effectiveAmount)));
+
+    document.getElementById('savingsScheduledSubtitle').textContent =
+      `${summary.activeSavingsTxs.length} savings/asset payment(s) active in ${formatMonthLong(summary.month)}`;
+
+    const el = document.getElementById('savingsScheduledList');
+    if (!list.length) {
+      el.innerHTML = `<div class="empty-state">No savings or asset payments match this filter in ${escapeHtml(formatMonthLong(summary.month))}. Click <strong>+ Add Savings / Asset Payment</strong> to add a monthly, weekly, or one-off transfer.</div>`;
+      return;
+    }
+
+    el.innerHTML = list.map((r) => {
+      const tx = r.tx;
+      const acc = accountMap[tx.accountId];
+      const delta = r.signedDelta;
+      const isPositive = delta >= 0;
+      const amtClass = tx.type === 'deposit' ? 'text-emerald' : tx.type === 'withdrawal' ? 'text-rose' : 'text-sky';
+      const statusText = r.status === 'paid' ? 'Paid' : r.status === 'skipped' ? 'Skipped' : 'Upcoming';
+      const unitSub = r.freq === 'weekly' && !r.hasAmountOverride
+        ? `${formatMoney(r.baseUnitAmount)}/wk`
+        : r.hasAmountOverride
+          ? `Base ${formatMoney(r.baseUnitAmount)} (edited)`
+          : (tx.category || 'Payment');
+      const occPreview = r.freq === 'weekly' && r.occurrences.length > 0 && !r.hasAmountOverride
+        ? `<span>Dates: ${r.occurrences.map((d) => d.slice(8)).join(', ')}</span>`
+        : '';
+      const typeLabel = tx.type === 'deposit' ? '+ Addition' : tx.type === 'withdrawal' ? '- Removal' : '± Adjust';
+
+      return `
+        <div class="entry-row ${r.status === 'skipped' ? 'is-skipped' : ''}" data-stx-id="${escapeHtml(tx.id)}">
+          <div class="entry-main">
+            <div class="entry-title-line">
+              <span class="entry-title">${escapeHtml(acc ? acc.name : 'Savings / Asset')}</span>
+              <span class="badge badge-${r.freq}">${escapeHtml(r.scheduleLabel)}</span>
+              ${renderMemberBadge(r.memberId)}
+              <span class="badge badge-essential">${escapeHtml(typeLabel)}</span>
+              ${r.hasAmountOverride ? '<span class="badge badge-override">Month Override</span>' : ''}
+            </div>
+            <div class="entry-meta">
+              <span>${escapeHtml(tx.category || 'Movement')}</span>
+              ${occPreview}
+              ${r.note ? `<span>• ${escapeHtml(r.note)}</span>` : ''}
+            </div>
+          </div>
+          <div class="entry-right">
+            <div class="entry-amount-wrap">
+              <div class="entry-amount ${amtClass}">${isPositive ? '+' : ''}${escapeHtml(formatMoney(delta))}</div>
+              <div class="entry-amount-sub">${escapeHtml(unitSub)}</div>
+            </div>
+            <button type="button" class="status-toggle ${r.status}" data-toggle-stx-status="${escapeHtml(tx.id)}" title="Click to toggle Paid / Upcoming / Skipped">
+              ${statusText}
+            </button>
+            <button type="button" class="icon-btn" data-edit-stx="${escapeHtml(tx.id)}">Edit</button>
+            <button type="button" class="icon-btn danger" data-remove-stx="${escapeHtml(tx.id)}">Remove</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
   function renderSavingsTab(summary) {
     const accounts = runtime.state.savingsAccounts || [];
+    const displayedAccounts = runtime.memberFilter === 'all'
+      ? accounts
+      : accounts.filter((a) => (a.memberId || getMembers()[0]?.id) === runtime.memberFilter);
+
     document.getElementById('savBannerTotalLabel').textContent = `Total Savings & Assets (${formatMonthShort(summary.month)})`;
     document.getElementById('savBannerTotalValue').textContent = formatMoney(summary.totalSavingsAtMonth);
     document.getElementById('savBannerLiveNote').textContent = `Live current total (${formatMonthShort(getCurrentMonth())}): ${formatMoney(summary.totalSavingsLive)}`;
@@ -874,23 +1169,29 @@
     document.getElementById('savBannerMonthName').textContent = formatMonthLong(summary.month);
 
     const gridEl = document.getElementById('savingsAccountsGrid');
-    if (!accounts.length) {
-      gridEl.innerHTML = `<div class="empty-state">No savings accounts or assets added yet. Click <strong>+ Add Account / Asset</strong> to start tracking.</div>`;
+    if (!displayedAccounts.length) {
+      gridEl.innerHTML = `<div class="empty-state">No savings accounts or assets match the current filter. Click <strong>+ Add Account / Asset</strong> to start tracking.</div>`;
     } else {
-      gridEl.innerHTML = accounts.map((acc) => {
+      gridEl.innerHTML = displayedAccounts.map((acc) => {
         const balAtMonth = getAccountBalanceAtMonth(acc, summary.month);
         const balLive = getAccountBalanceAtMonth(acc, getCurrentMonth());
         const act = getAccountMonthActivity(acc.id, summary.month);
         const target = Number(acc.targetAmount || 0);
         const pct = target > 0 ? Math.min(100, Math.round((balAtMonth / target) * 100)) : 0;
         const typeLabel = ACCOUNT_TYPE_LABELS[acc.type] || 'Account';
+        const recurringCount = (runtime.state.savingsTransactions || []).filter(
+          (tx) => tx.accountId === acc.id && (tx.frequency === 'monthly' || tx.frequency === 'weekly') && isItemActiveInMonth(tx, summary.month)
+        ).length;
 
         return `
           <article class="savings-card" style="border-top-color:${escapeHtml(acc.color || '#38bdf8')}">
             <div class="savings-card-top">
               <div>
-                <span class="badge badge-one-off">${escapeHtml(typeLabel)}</span>
-                <h3 class="savings-card-title" style="margin-top:6px;">${escapeHtml(acc.name)}</h3>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
+                  <span class="badge badge-one-off">${escapeHtml(typeLabel)}</span>
+                  ${renderMemberBadge(acc.memberId)}
+                </div>
+                <h3 class="savings-card-title" style="margin-top:7px;">${escapeHtml(acc.name)}</h3>
               </div>
               <button type="button" class="icon-btn" data-edit-sav-acc="${escapeHtml(acc.id)}">Edit</button>
             </div>
@@ -900,6 +1201,7 @@
               <div class="entry-amount-sub">
                 ${summary.month !== getCurrentMonth() ? `Live today: ${escapeHtml(formatMoney(balLive))} • ` : ''}
                 Month net: <span class="${act.net >= 0 ? 'text-emerald' : 'text-rose'}">${escapeHtml(formatMoney(act.net, true))}</span>
+                ${recurringCount > 0 ? ` • ${recurringCount} recurring rule${recurringCount === 1 ? '' : 's'}` : ''}
               </div>
             </div>
 
@@ -917,7 +1219,7 @@
 
             <div class="savings-card-meta">
               ${Number(acc.interestRate || 0) !== 0 ? `<span>Rate: ${Number(acc.interestRate)}%</span>` : ''}
-              ${acc.type !== 'asset' ? `<span>Auto-split weight: ${Number(acc.allocationWeight || 0)}%</span>` : ''}
+              <span>Auto-split weight: ${Number(acc.allocationWeight || 0)}%</span>
               <span>Opening: ${escapeHtml(formatMoney(acc.openingBalance || 0))}</span>
             </div>
             ${acc.notes ? `<div class="text-muted" style="font-size:0.78rem;">${escapeHtml(acc.notes)}</div>` : ''}
@@ -925,6 +1227,7 @@
             <div class="savings-card-actions">
               <button type="button" class="btn btn-income btn-sm" data-quick-stx="deposit" data-acc-id="${escapeHtml(acc.id)}">+ Add Money</button>
               <button type="button" class="btn btn-outgoing btn-sm" data-quick-stx="withdrawal" data-acc-id="${escapeHtml(acc.id)}">- Remove</button>
+              <button type="button" class="btn btn-savings btn-sm" data-quick-stx="deposit" data-acc-id="${escapeHtml(acc.id)}" data-stx-cat="Monthly Allocation">Allocate</button>
               <button type="button" class="btn btn-ghost btn-sm" data-quick-stx="adjustment" data-acc-id="${escapeHtml(acc.id)}">Adjust</button>
               <button type="button" class="icon-btn danger" data-delete-sav-acc="${escapeHtml(acc.id)}">Delete</button>
             </div>
@@ -940,29 +1243,66 @@
       accounts.map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join('');
     filterSel.value = accounts.some((a) => a.id === prevVal) ? prevVal : 'all';
 
+    renderSavingsScheduledList(summary);
     renderSavingsLedger();
   }
 
   function renderSavingsLedger() {
     const accountFilter = document.getElementById('ledgerAccountFilter').value;
+    const memberFilter = document.getElementById('ledgerMemberFilter').value;
+    const freqFilter = document.getElementById('ledgerFreqFilter').value;
     const scopeFilter = document.getElementById('ledgerScopeFilter').value;
     const typeFilter = document.getElementById('ledgerTypeFilter').value;
     const q = document.getElementById('ledgerSearchInput').value.trim().toLowerCase();
 
     const accountMap = Object.fromEntries((runtime.state.savingsAccounts || []).map((a) => [a.id, a]));
-    const rows = (runtime.state.savingsTransactions || [])
-      .filter((tx) => {
+    const currentMonth = getCurrentMonth();
+    const horizonEnd = runtime.selectedMonth > currentMonth ? runtime.selectedMonth : currentMonth;
+    const materialized = [];
+
+    for (const tx of runtime.state.savingsTransactions || []) {
+      const freq = tx.frequency || 'one-off';
+      if (freq === 'one-off') {
+        const r = resolveSavingsTxForMonth(tx, tx.month, runtime.state);
+        materialized.push({
+          ...r,
+          sortDate: tx.date || `${tx.month}-01`
+        });
+      } else {
+        const start = tx.startMonth || horizonEnd;
+        const end = tx.endMonth && tx.endMonth < horizonEnd ? tx.endMonth : horizonEnd;
+        let cursor = start;
+        let guard = 0;
+        while (cursor <= end && guard < 120) {
+          const r = resolveSavingsTxForMonth(tx, cursor, runtime.state);
+          const day = freq === 'monthly' ? pad2(tx.dayOfMonth || 1) : (r.occurrences[0]?.slice(8) || '01');
+          materialized.push({
+            ...r,
+            sortDate: `${cursor}-${day}`
+          });
+          cursor = shiftMonth(cursor, 1);
+          guard++;
+        }
+      }
+    }
+
+    const rows = materialized
+      .filter((r) => {
+        const tx = r.tx;
         if (accountFilter !== 'all' && tx.accountId !== accountFilter) return false;
-        if (scopeFilter === 'selected' && tx.month !== runtime.selectedMonth) return false;
+        if (memberFilter !== 'all' && r.memberId !== memberFilter) return false;
+        if (freqFilter !== 'all' && r.freq !== freqFilter) return false;
+        if (scopeFilter === 'selected' && r.month !== runtime.selectedMonth) return false;
         if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
         if (q) {
           const accName = accountMap[tx.accountId]?.name || '';
-          const hay = `${accName} ${tx.category || ''} ${tx.note || ''} ${tx.date || ''}`.toLowerCase();
+          const memName = getMemberById(r.memberId)?.name || '';
+          const hay = `${accName} ${memName} ${tx.category || ''} ${r.note || ''} ${r.sortDate}`.toLowerCase();
           if (!hay.includes(q)) return false;
         }
         return true;
       })
-      .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''));
+      .sort((a, b) => b.sortDate.localeCompare(a.sortDate) || (b.tx.createdAt || '').localeCompare(a.tx.createdAt || ''));
 
     const wrap = document.getElementById('savingsLedgerTableWrap');
     if (!rows.length) {
@@ -974,8 +1314,10 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>Date</th>
+            <th>Date / Month</th>
             <th>Account / Asset</th>
+            <th>Paid By</th>
+            <th>Schedule</th>
             <th>Movement</th>
             <th>Category</th>
             <th>Notes</th>
@@ -984,8 +1326,9 @@
           </tr>
         </thead>
         <tbody>
-          ${rows.map((tx) => {
-            const delta = getSignedTxDelta(tx);
+          ${rows.map((r) => {
+            const tx = r.tx;
+            const delta = r.signedDelta;
             const acc = accountMap[tx.accountId];
             const typeBadge = tx.type === 'deposit'
               ? '<span class="badge badge-one-off">Addition (+)</span>'
@@ -993,14 +1336,16 @@
                 ? '<span class="badge badge-override">Removal (-)</span>'
                 : '<span class="badge badge-weekly">Adjustment</span>';
             return `
-              <tr>
-                <td>${escapeHtml(tx.date || tx.month)}</td>
+              <tr class="${r.status === 'skipped' ? 'is-skipped' : ''}">
+                <td>${escapeHtml(r.sortDate)}</td>
                 <td><strong>${escapeHtml(acc ? acc.name : 'Deleted Account')}</strong></td>
+                <td>${renderMemberBadge(r.memberId)}</td>
+                <td><span class="badge badge-${r.freq}">${escapeHtml(r.freq)}</span></td>
                 <td>${typeBadge}</td>
                 <td>${escapeHtml(tx.category || '—')}</td>
-                <td style="white-space:normal;min-width:180px;">${escapeHtml(tx.note || '—')}</td>
+                <td style="white-space:normal;min-width:160px;">${escapeHtml(r.note || '—')}</td>
                 <td class="num"><strong class="${delta >= 0 ? 'text-emerald' : 'text-rose'}">${escapeHtml(formatMoney(delta, true))}</strong></td>
-                <td class="num"><button type="button" class="icon-btn danger" data-delete-stx="${escapeHtml(tx.id)}">Delete</button></td>
+                <td class="num"><button type="button" class="icon-btn danger" data-remove-stx="${escapeHtml(tx.id)}">Remove</button></td>
               </tr>
             `;
           }).join('')}
@@ -1015,7 +1360,7 @@
       months.push(shiftMonth(runtime.selectedMonth, offset));
     }
 
-    const summaries = months.map((m) => computeMonthSummary(m));
+    const summaries = months.map((m) => computeMonthSummary(m, runtime.state, runtime.memberFilter));
     const maxBar = Math.max(
       1,
       ...summaries.map((s) => Math.max(s.totalIncome, s.totalOutgoings))
@@ -1088,15 +1433,11 @@
     let minMonth = shiftMonth(currentMonth, -12);
     let maxMonth = shiftMonth(currentMonth, 12);
 
-    for (const e of state.entries || []) {
+    for (const e of [...(state.entries || []), ...(state.savingsTransactions || [])]) {
       if (e.month && e.month < minMonth) minMonth = e.month;
       if (e.month && e.month > maxMonth) maxMonth = e.month;
       if (e.startMonth && e.startMonth < minMonth) minMonth = e.startMonth;
       if (e.endMonth && e.endMonth > maxMonth) maxMonth = e.endMonth;
-    }
-    for (const tx of state.savingsTransactions || []) {
-      if (tx.month && tx.month < minMonth) minMonth = tx.month;
-      if (tx.month && tx.month > maxMonth) maxMonth = tx.month;
     }
 
     // Clamp overly wide ranges to +/- 60 months to stay fast
@@ -1116,11 +1457,12 @@
 
     const records = [];
     const categories = new Set();
+    const accountMap = Object.fromEntries((state.savingsAccounts || []).map((a) => [a.id, a]));
 
     for (const m of months) {
       const horizon = getHorizon(m, currentMonth);
       for (const e of state.entries || []) {
-        if (!isEntryActiveInMonth(e, m)) continue;
+        if (!isItemActiveInMonth(e, m)) continue;
         const r = resolveEntryForMonth(e, m, state);
         if (e.category) categories.add(e.category);
         records.push({
@@ -1131,6 +1473,7 @@
           title: e.title,
           category: e.category || 'Uncategorized',
           frequency: e.frequency,
+          memberId: r.memberId,
           status: r.status,
           amount: r.effectiveAmount,
           signedAmount: e.kind === 'income' ? r.effectiveAmount : -r.effectiveAmount,
@@ -1138,27 +1481,28 @@
           entryId: e.id
         });
       }
-    }
 
-    const accountMap = Object.fromEntries((state.savingsAccounts || []).map((a) => [a.id, a]));
-    for (const tx of state.savingsTransactions || []) {
-      const acc = accountMap[tx.accountId];
-      const delta = getSignedTxDelta(tx);
-      if (tx.category) categories.add(tx.category);
-      records.push({
-        recordKind: 'savings',
-        month: tx.month,
-        horizon: getHorizon(tx.month, currentMonth),
-        dateLabel: tx.date || tx.month,
-        title: `${acc ? acc.name : 'Savings'} (${tx.type})`,
-        category: tx.category || 'Savings Movement',
-        frequency: 'one-off',
-        status: tx.month <= currentMonth ? 'paid' : 'pending',
-        amount: Math.abs(delta),
-        signedAmount: delta,
-        note: tx.note || '',
-        entryId: null
-      });
+      for (const tx of state.savingsTransactions || []) {
+        if (!isItemActiveInMonth(tx, m)) continue;
+        const r = resolveSavingsTxForMonth(tx, m, state);
+        const acc = accountMap[tx.accountId];
+        if (tx.category) categories.add(tx.category);
+        records.push({
+          recordKind: 'savings',
+          month: m,
+          horizon,
+          dateLabel: tx.date || (r.freq === 'monthly' ? `${m}-${pad2(tx.dayOfMonth || 1)}` : m),
+          title: `${acc ? acc.name : 'Savings / Asset'} (${tx.type})`,
+          category: tx.category || 'Savings Movement',
+          frequency: r.freq,
+          memberId: r.memberId,
+          status: r.status,
+          amount: Math.abs(r.signedDelta),
+          signedAmount: r.signedDelta,
+          note: r.note,
+          entryId: null
+        });
+      }
     }
 
     return { records, categories: Array.from(categories).sort() };
@@ -1177,6 +1521,7 @@
     const kindFilter = document.getElementById('searchKindFilter').value;
     const freqFilter = document.getElementById('searchFreqFilter').value;
     const categoryFilter = catSel.value;
+    const memberFilter = document.getElementById('searchMemberFilter').value;
     const statusFilter = document.getElementById('searchStatusFilter').value;
     const fromMonth = document.getElementById('searchFromMonth').value;
     const toMonth = document.getElementById('searchToMonth').value;
@@ -1194,10 +1539,12 @@
       if (kindFilter !== 'all' && rec.recordKind !== kindFilter) return false;
       if (freqFilter !== 'all' && rec.frequency !== freqFilter) return false;
       if (categoryFilter !== 'all' && rec.category !== categoryFilter) return false;
+      if (memberFilter !== 'all' && rec.memberId !== memberFilter) return false;
       if (statusFilter !== 'all' && rec.status !== statusFilter) return false;
 
       if (query) {
-        const hay = `${rec.title} ${rec.category} ${rec.note} ${rec.month} ${rec.dateLabel} ${rec.frequency} ${rec.recordKind}`.toLowerCase();
+        const memName = getMemberById(rec.memberId)?.name || '';
+        const hay = `${rec.title} ${rec.category} ${memName} ${rec.note} ${rec.month} ${rec.dateLabel} ${rec.frequency} ${rec.recordKind}`.toLowerCase();
         if (!hay.includes(query)) return false;
       }
       return true;
@@ -1237,6 +1584,7 @@
             <th>Month / Date</th>
             <th>Horizon</th>
             <th>Description</th>
+            <th>Paid By</th>
             <th>Type</th>
             <th>Frequency</th>
             <th>Category</th>
@@ -1258,6 +1606,7 @@
                 <td><strong>${escapeHtml(formatMonthShort(rec.month))}</strong><br/><span class="text-muted" style="font-size:0.74rem;">${escapeHtml(rec.dateLabel)}</span></td>
                 <td><span class="month-pill-tag tag-${rec.horizon}">${horizonLabel}</span></td>
                 <td style="white-space:normal;min-width:190px;"><strong>${escapeHtml(rec.title)}</strong>${rec.note ? `<br/><span class="text-muted" style="font-size:0.74rem;">${escapeHtml(rec.note)}</span>` : ''}</td>
+                <td>${renderMemberBadge(rec.memberId)}</td>
                 <td>${escapeHtml(rec.recordKind)}</td>
                 <td><span class="badge badge-${rec.frequency}">${escapeHtml(rec.frequency)}</span></td>
                 <td>${escapeHtml(rec.category)}</td>
@@ -1277,10 +1626,11 @@
     if (!runtime.state) return;
     renderTopControls();
     renderMonthNavigator();
-    const summary = computeMonthSummary(runtime.selectedMonth);
+    const summary = computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter);
     renderKpis(summary);
     renderEntriesLists(summary);
     renderOutgoingsBreakdown(summary);
+    renderMemberBreakdown(summary);
     renderSavingsAllocatorAndSnapshot(summary);
     renderSavingsTab(summary);
     renderRollingHistory();
@@ -1317,10 +1667,14 @@
   function openEntryModal({ entryId = null, defaultKind = 'outgoing', defaultFreq = 'monthly' } = {}) {
     const form = document.getElementById('entryForm');
     form.reset();
+    populateMemberSelects();
     document.getElementById('entryIdInput').value = entryId || '';
     document.getElementById('editScopeMonthName').textContent = formatMonthLong(runtime.selectedMonth);
     document.getElementById('entryStatusMonthLabel').textContent = formatMonthShort(runtime.selectedMonth);
     document.querySelector('input[name="editScope"][value="series"]').checked = true;
+
+    const members = getMembers();
+    const fallbackMember = runtime.memberFilter !== 'all' ? runtime.memberFilter : (members[0]?.id || 'mem_joint');
 
     if (entryId) {
       const entry = runtime.state.entries.find((e) => e.id === entryId);
@@ -1332,6 +1686,7 @@
       document.getElementById('entryTitleInput').value = entry.title;
       document.getElementById('entryAmountInput').value = resolved.hasAmountOverride ? resolved.computedAmount : entry.amount;
       document.getElementById('entryCategoryInput').value = entry.category || '';
+      document.getElementById('entryMemberSelect').value = resolved.memberId || fallbackMember;
       document.getElementById('entryEssentialSelect').value = String(entry.essential !== false);
       document.getElementById('entryOneOffMonthInput').value = entry.month || runtime.selectedMonth;
       document.getElementById('entryOneOffDateInput').value = entry.date || '';
@@ -1349,6 +1704,7 @@
       document.getElementById('entryModalTitle').textContent =
         defaultKind === 'income' ? 'Add Income' : 'Add Outgoing / Direct Debit';
       document.getElementById('entryCategoryInput').value = defaultKind === 'income' ? 'Salary' : 'Bills & Utilities';
+      document.getElementById('entryMemberSelect').value = fallbackMember;
       document.getElementById('entryOneOffMonthInput').value = runtime.selectedMonth;
       document.getElementById('entryWeeklyStartInput').value = runtime.selectedMonth;
       document.getElementById('entryMonthlyStartInput').value = runtime.selectedMonth;
@@ -1361,16 +1717,28 @@
     document.getElementById('entryTitleInput').focus();
   }
 
-  function openDeleteEntryModal(entryId) {
-    const entry = runtime.state.entries.find((e) => e.id === entryId);
-    if (!entry) return;
-    runtime.pendingDeleteId = entryId;
+  function openDeleteItemModal(kind, itemId) {
+    const isStx = kind === 'stx';
+    const item = isStx
+      ? (runtime.state.savingsTransactions || []).find((t) => t.id === itemId)
+      : (runtime.state.entries || []).find((e) => e.id === itemId);
+    if (!item) return;
 
-    const isRecurring = entry.frequency !== 'one-off';
-    document.getElementById('deleteModalTitle').textContent = `Remove "${entry.title}"`;
+    runtime.pendingDeleteKind = kind;
+    runtime.pendingDeleteId = itemId;
+
+    const freq = item.frequency || 'one-off';
+    const isRecurring = freq !== 'one-off';
+    let label = item.title;
+    if (isStx) {
+      const acc = (runtime.state.savingsAccounts || []).find((a) => a.id === item.accountId);
+      label = `${acc ? acc.name : 'Savings/Asset'} (${item.type})`;
+    }
+
+    document.getElementById('deleteModalTitle').textContent = `Remove "${label}"`;
     document.getElementById('deleteEntryMessage').textContent = isRecurring
-      ? `"${entry.title}" is a recurring ${entry.frequency} item. Would you like to stop it starting from ${formatMonthLong(runtime.selectedMonth)} (keeping all earlier months intact), or delete it completely?`
-      : `Are you sure you want to delete the one-off ${entry.kind} "${entry.title}" (${formatMoney(entry.amount)})?`;
+      ? `"${label}" is a recurring ${freq} payment. Would you like to stop it starting from ${formatMonthLong(runtime.selectedMonth)} (keeping all earlier months intact), or delete it completely?`
+      : `Are you sure you want to delete "${label}" (${formatMoney(item.amount)})?`;
 
     document.getElementById('stopMonthText').textContent = formatMonthLong(runtime.selectedMonth);
     document.getElementById('deleteRecurringChoices').classList.toggle('hidden', !isRecurring);
@@ -1381,7 +1749,10 @@
   function openSavingsAccountModal(accountId = null) {
     const form = document.getElementById('savingsAccountForm');
     form.reset();
+    populateMemberSelects();
     document.getElementById('savAccIdInput').value = accountId || '';
+    const members = getMembers();
+    const fallbackMember = runtime.memberFilter !== 'all' ? runtime.memberFilter : (members[0]?.id || 'mem_joint');
 
     if (accountId) {
       const acc = runtime.state.savingsAccounts.find((a) => a.id === accountId);
@@ -1389,6 +1760,7 @@
       document.getElementById('savingsAccountModalTitle').textContent = `Edit ${acc.name}`;
       document.getElementById('savAccNameInput').value = acc.name;
       document.getElementById('savAccTypeInput').value = acc.type || 'savings';
+      document.getElementById('savAccMemberSelect').value = acc.memberId || fallbackMember;
       document.getElementById('savAccOpeningInput').value = acc.openingBalance ?? 0;
       document.getElementById('savAccTargetInput').value = acc.targetAmount ?? 0;
       document.getElementById('savAccRateInput').value = acc.interestRate ?? 0;
@@ -1397,6 +1769,7 @@
       document.getElementById('savAccNotesInput').value = acc.notes || '';
     } else {
       document.getElementById('savingsAccountModalTitle').textContent = 'Add Savings Account or Asset';
+      document.getElementById('savAccMemberSelect').value = fallbackMember;
       document.getElementById('savAccOpeningInput').value = '0';
       document.getElementById('savAccTargetInput').value = '0';
       document.getElementById('savAccRateInput').value = '4.5';
@@ -1407,20 +1780,36 @@
     document.getElementById('savAccNameInput').focus();
   }
 
-  function syncStxTypeUi() {
+  function syncStxModalVisibility() {
     document.querySelectorAll('[data-stx-type]').forEach((btn) => {
       btn.classList.toggle('active', btn.dataset.stxType === runtime.stxModalType);
     });
+    document.querySelectorAll('[data-stx-freq]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.stxFreq === runtime.stxModalFreq);
+    });
+
+    document.getElementById('stxOneOffFields').classList.toggle('hidden', runtime.stxModalFreq !== 'one-off');
+    document.getElementById('stxWeeklyFields').classList.toggle('hidden', runtime.stxModalFreq !== 'weekly');
+    document.getElementById('stxMonthlyFields').classList.toggle('hidden', runtime.stxModalFreq !== 'monthly');
+
+    const isEditing = Boolean(document.getElementById('stxIdInput').value);
+    const isRecurring = runtime.stxModalFreq !== 'one-off';
+    document.getElementById('stxEditScopeWrap').classList.toggle('hidden', !(isEditing && isRecurring));
+
     const amtLabel = document.getElementById('stxAmountLabel');
     const catInput = document.getElementById('stxCategoryInput');
     if (runtime.stxModalType === 'deposit') {
       amtLabel.textContent = 'Amount to Add *';
-      if (!catInput.value || catInput.value === 'Withdrawal' || catInput.value === 'Valuation Update') {
-        catInput.value = 'Deposit';
+      if (!catInput.value || ['Withdrawal', 'Valuation Update'].includes(catInput.value)) {
+        catInput.value = runtime.stxModalFreq === 'monthly'
+          ? 'Monthly Standing Order'
+          : runtime.stxModalFreq === 'weekly'
+            ? 'Weekly Savings Rule'
+            : 'Deposit';
       }
     } else if (runtime.stxModalType === 'withdrawal') {
       amtLabel.textContent = 'Amount to Remove *';
-      if (!catInput.value || catInput.value === 'Deposit' || catInput.value === 'Valuation Update') {
+      if (!catInput.value || ['Deposit', 'Monthly Standing Order', 'Weekly Savings Rule', 'Valuation Update'].includes(catInput.value)) {
         catInput.value = 'Withdrawal';
       }
     } else {
@@ -1429,7 +1818,7 @@
     }
   }
 
-  function openSavingsTxModal({ type = 'deposit', accountId = null } = {}) {
+  function openSavingsTxModal({ txId = null, type = 'deposit', freq = 'one-off', accountId = null, defaultCategory = null } = {}) {
     const accounts = runtime.state.savingsAccounts || [];
     if (!accounts.length) {
       showToast('Add a savings account or asset first.', 'error');
@@ -1438,22 +1827,93 @@
     }
 
     document.getElementById('savingsTxForm').reset();
-    runtime.stxModalType = type;
+    populateMemberSelects();
+    document.getElementById('stxIdInput').value = txId || '';
+    document.getElementById('stxEditScopeMonthName').textContent = formatMonthLong(runtime.selectedMonth);
+    document.getElementById('stxStatusMonthLabel').textContent = formatMonthShort(runtime.selectedMonth);
+    document.querySelector('input[name="stxEditScope"][value="series"]').checked = true;
 
     const sel = document.getElementById('stxAccountSelect');
     sel.innerHTML = accounts.map((a) => `<option value="${escapeHtml(a.id)}">${escapeHtml(a.name)}</option>`).join('');
-    if (accountId && accounts.some((a) => a.id === accountId)) {
-      sel.value = accountId;
+
+    const members = getMembers();
+    const fallbackMember = runtime.memberFilter !== 'all' ? runtime.memberFilter : (members[0]?.id || 'mem_joint');
+
+    if (txId) {
+      const tx = (runtime.state.savingsTransactions || []).find((t) => t.id === txId);
+      if (!tx) return;
+      const resolved = resolveSavingsTxForMonth(tx, runtime.selectedMonth);
+      runtime.stxModalType = tx.type || 'deposit';
+      runtime.stxModalFreq = tx.frequency || 'one-off';
+      document.getElementById('savingsTxModalTitle').textContent = 'Edit Savings / Asset Payment';
+      sel.value = tx.accountId;
+      document.getElementById('stxMemberSelect').value = resolved.memberId || fallbackMember;
+      document.getElementById('stxAmountInput').value = resolved.hasAmountOverride ? resolved.computedAmount : tx.amount;
+      document.getElementById('stxCategoryInput').value = tx.category || '';
+      document.getElementById('stxOneOffMonthInput').value = tx.month || runtime.selectedMonth;
+      document.getElementById('stxDateInput').value = tx.date || getLastDayOfMonthIso(runtime.selectedMonth);
+      document.getElementById('stxDayOfWeekInput').value = String(tx.dayOfWeek ?? 5);
+      document.getElementById('stxWeeklyStartInput').value = tx.startMonth || runtime.selectedMonth;
+      document.getElementById('stxWeeklyEndInput').value = tx.endMonth || '';
+      document.getElementById('stxDayOfMonthInput').value = String(tx.dayOfMonth || 1);
+      document.getElementById('stxMonthlyStartInput').value = tx.startMonth || runtime.selectedMonth;
+      document.getElementById('stxMonthlyEndInput').value = tx.endMonth || '';
+      document.getElementById('stxStatusInput').value = resolved.status;
+      document.getElementById('stxNoteInput').value = resolved.note || '';
+    } else {
+      runtime.stxModalType = type;
+      runtime.stxModalFreq = freq;
+      document.getElementById('savingsTxModalTitle').textContent = 'Add Savings / Asset Payment or Movement';
+      if (accountId && accounts.some((a) => a.id === accountId)) {
+        sel.value = accountId;
+      }
+      const chosenAcc = accounts.find((a) => a.id === sel.value);
+      document.getElementById('stxMemberSelect').value = runtime.memberFilter !== 'all'
+        ? runtime.memberFilter
+        : (chosenAcc?.memberId || fallbackMember);
+
+      const defaultDate = runtime.selectedMonth === getCurrentMonth()
+        ? getTodayIso()
+        : getLastDayOfMonthIso(runtime.selectedMonth);
+      document.getElementById('stxOneOffMonthInput').value = runtime.selectedMonth;
+      document.getElementById('stxDateInput').value = defaultDate;
+      document.getElementById('stxWeeklyStartInput').value = runtime.selectedMonth;
+      document.getElementById('stxMonthlyStartInput').value = runtime.selectedMonth;
+      document.getElementById('stxDayOfMonthInput').value = '1';
+      document.getElementById('stxStatusInput').value = runtime.selectedMonth < getCurrentMonth() ? 'paid' : 'pending';
+      document.getElementById('stxCategoryInput').value = defaultCategory || (
+        type === 'withdrawal' ? 'Withdrawal' : type === 'adjustment' ? 'Valuation Update' : 'Deposit'
+      );
     }
 
-    const defaultDate = runtime.selectedMonth === getCurrentMonth()
-      ? getTodayIso()
-      : getLastDayOfMonthIso(runtime.selectedMonth);
-    document.getElementById('stxDateInput').value = defaultDate;
-    document.getElementById('stxCategoryInput').value = type === 'withdrawal' ? 'Withdrawal' : type === 'adjustment' ? 'Valuation Update' : 'Deposit';
-    syncStxTypeUi();
+    syncStxModalVisibility();
     openModal('savingsTxModal');
     document.getElementById('stxAmountInput').focus();
+  }
+
+  function renderMembersManageList() {
+    const members = getMembers();
+    const listEl = document.getElementById('membersManageList');
+    if (!listEl) return;
+    listEl.innerHTML = members.map((m) => `
+      <div class="member-manage-item" data-member-row="${escapeHtml(m.id)}">
+        <input type="text" value="${escapeHtml(m.name)}" data-member-name="${escapeHtml(m.id)}" aria-label="Member name" />
+        <select data-member-role="${escapeHtml(m.id)}" aria-label="Account type">
+          <option value="personal" ${m.role !== 'joint' ? 'selected' : ''}>Personal</option>
+          <option value="joint" ${m.role === 'joint' ? 'selected' : ''}>Joint</option>
+        </select>
+        <input type="color" value="${escapeHtml(m.color || '#38bdf8')}" class="input-color" data-member-color="${escapeHtml(m.id)}" aria-label="Member color" />
+        <div style="display:flex;gap:6px;">
+          <button type="button" class="icon-btn" data-save-member="${escapeHtml(m.id)}">Save</button>
+          <button type="button" class="icon-btn danger" data-delete-member="${escapeHtml(m.id)}" ${members.length <= 1 ? 'disabled' : ''}>Remove</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function openMembersModal() {
+    renderMembersManageList();
+    openModal('membersModal');
   }
 
   function openNetworkModal() {
@@ -1529,12 +1989,25 @@
       }
     });
 
+    document.getElementById('btnManageMembers').addEventListener('click', openMembersModal);
+    document.getElementById('btnEditMembersInline').addEventListener('click', openMembersModal);
+    document.getElementById('globalMemberFilter').addEventListener('change', (e) => {
+      runtime.memberFilter = e.target.value;
+      renderAll();
+    });
+    document.getElementById('allocMemberSelect').addEventListener('change', (e) => {
+      runtime.allocMemberId = e.target.value;
+      runtime.plannedAllocations = {};
+      renderSavingsAllocatorAndSnapshot(computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter));
+    });
+
     document.getElementById('syncStatusBtn').addEventListener('click', openNetworkModal);
     document.getElementById('btnQuickAddIncome').addEventListener('click', () => openEntryModal({ defaultKind: 'income', defaultFreq: 'monthly' }));
     document.getElementById('btnAddIncomeInline').addEventListener('click', () => openEntryModal({ defaultKind: 'income', defaultFreq: 'monthly' }));
     document.getElementById('btnQuickAddOutgoing').addEventListener('click', () => openEntryModal({ defaultKind: 'outgoing', defaultFreq: 'monthly' }));
     document.getElementById('btnAddOutgoingInline').addEventListener('click', () => openEntryModal({ defaultKind: 'outgoing', defaultFreq: 'monthly' }));
-    document.getElementById('btnQuickAddSavingsTx').addEventListener('click', () => openSavingsTxModal({ type: 'deposit' }));
+    document.getElementById('btnQuickAddSavingsTx').addEventListener('click', () => openSavingsTxModal({ type: 'deposit', freq: 'one-off' }));
+    document.getElementById('btnAddSavingsSchedule').addEventListener('click', () => openSavingsTxModal({ type: 'deposit', freq: 'monthly' }));
 
     // Rolling Month Navigation
     document.getElementById('btnPrevMonth').addEventListener('click', () => {
@@ -1568,7 +2041,18 @@
       document.querySelectorAll('#outgoingFilterChips .chip').forEach((c) => {
         c.classList.toggle('active', c === chip);
       });
-      renderEntriesLists(computeMonthSummary(runtime.selectedMonth));
+      renderEntriesLists(computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter));
+    });
+
+    // Savings schedule filter chips
+    document.getElementById('savingsFilterChips').addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-sav-filter]');
+      if (!chip) return;
+      runtime.savingsFilter = chip.dataset.savFilter;
+      document.querySelectorAll('#savingsFilterChips .chip').forEach((c) => {
+        c.classList.toggle('active', c === chip);
+      });
+      renderSavingsScheduledList(computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter));
     });
 
     // Delegated month select & entry actions
@@ -1597,6 +2081,62 @@
         return;
       }
 
+      const filterMemberBtn = e.target.closest('[data-filter-member]');
+      if (filterMemberBtn) {
+        const targetId = filterMemberBtn.dataset.filterMember;
+        runtime.memberFilter = runtime.memberFilter === targetId ? 'all' : targetId;
+        renderAll();
+        return;
+      }
+
+      const saveMemberBtn = e.target.closest('[data-save-member]');
+      if (saveMemberBtn) {
+        const id = saveMemberBtn.dataset.saveMember;
+        const member = runtime.state.members.find((m) => m.id === id);
+        if (!member) return;
+        const nameInput = document.querySelector(`[data-member-name="${id}"]`);
+        const roleSelect = document.querySelector(`[data-member-role="${id}"]`);
+        const colorInput = document.querySelector(`[data-member-color="${id}"]`);
+        const newName = nameInput?.value.trim();
+        if (!newName) {
+          showToast('Member name cannot be empty.', 'error');
+          return;
+        }
+        member.name = newName;
+        member.role = roleSelect?.value === 'joint' ? 'joint' : 'personal';
+        member.color = colorInput?.value || member.color;
+        renderMembersManageList();
+        persistChange(`Updated member "${member.name}"`);
+        return;
+      }
+
+      const delMemberBtn = e.target.closest('[data-delete-member]');
+      if (delMemberBtn) {
+        const id = delMemberBtn.dataset.deleteMember;
+        if (runtime.state.members.length <= 1) {
+          showToast('At least one member/account is required.', 'error');
+          return;
+        }
+        const removed = runtime.state.members.find((m) => m.id === id);
+        const remaining = runtime.state.members.filter((m) => m.id !== id);
+        const fallbackId = remaining[0].id;
+        runtime.state.members = remaining;
+        for (const item of runtime.state.entries || []) {
+          if (item.memberId === id) item.memberId = fallbackId;
+        }
+        for (const acc of runtime.state.savingsAccounts || []) {
+          if (acc.memberId === id) acc.memberId = fallbackId;
+        }
+        for (const tx of runtime.state.savingsTransactions || []) {
+          if (tx.memberId === id) tx.memberId = fallbackId;
+        }
+        if (runtime.memberFilter === id) runtime.memberFilter = 'all';
+        if (runtime.allocMemberId === id) runtime.allocMemberId = 'all';
+        renderMembersManageList();
+        persistChange(`Removed "${removed?.name || 'member'}" and reassigned items to ${remaining[0].name}`);
+        return;
+      }
+
       const toggleBtn = e.target.closest('[data-toggle-status]');
       if (toggleBtn) {
         const entryId = toggleBtn.dataset.toggleStatus;
@@ -1614,6 +2154,23 @@
         return;
       }
 
+      const toggleStxBtn = e.target.closest('[data-toggle-stx-status]');
+      if (toggleStxBtn) {
+        const txId = toggleStxBtn.dataset.toggleStxStatus;
+        const tx = runtime.state.savingsTransactions.find((item) => item.id === txId);
+        if (!tx) return;
+        const resolved = resolveSavingsTxForMonth(tx, runtime.selectedMonth);
+        const nextStatus = resolved.status === 'pending' ? 'paid' : resolved.status === 'paid' ? 'skipped' : 'pending';
+        const key = `${txId}_${runtime.selectedMonth}`;
+        runtime.state.monthOverrides[key] = {
+          ...(runtime.state.monthOverrides[key] || {}),
+          status: nextStatus,
+          updatedAt: new Date().toISOString()
+        };
+        persistChange(`Marked savings payment as ${nextStatus}`);
+        return;
+      }
+
       const editEntryBtn = e.target.closest('[data-edit-entry]');
       if (editEntryBtn) {
         openEntryModal({ entryId: editEntryBtn.dataset.editEntry });
@@ -1622,7 +2179,19 @@
 
       const delEntryBtn = e.target.closest('[data-delete-entry]');
       if (delEntryBtn) {
-        openDeleteEntryModal(delEntryBtn.dataset.deleteEntry);
+        openDeleteItemModal('entry', delEntryBtn.dataset.deleteEntry);
+        return;
+      }
+
+      const editStxBtn = e.target.closest('[data-edit-stx]');
+      if (editStxBtn) {
+        openSavingsTxModal({ txId: editStxBtn.dataset.editStx });
+        return;
+      }
+
+      const removeStxBtn = e.target.closest('[data-remove-stx]');
+      if (removeStxBtn) {
+        openDeleteItemModal('stx', removeStxBtn.dataset.removeStx);
         return;
       }
 
@@ -1630,7 +2199,8 @@
       if (quickStxBtn) {
         openSavingsTxModal({
           type: quickStxBtn.dataset.quickStx,
-          accountId: quickStxBtn.dataset.accId
+          accountId: quickStxBtn.dataset.accId,
+          defaultCategory: quickStxBtn.dataset.stxCat || null
         });
         return;
       }
@@ -1653,14 +2223,6 @@
         return;
       }
 
-      const delStxBtn = e.target.closest('[data-delete-stx]');
-      if (delStxBtn) {
-        const txId = delStxBtn.dataset.deleteStx;
-        runtime.state.savingsTransactions = runtime.state.savingsTransactions.filter((t) => t.id !== txId);
-        persistChange('Removed savings transaction');
-        return;
-      }
-
       const copyUrlBtn = e.target.closest('[data-copy-url]');
       if (copyUrlBtn) {
         const url = copyUrlBtn.dataset.copyUrl;
@@ -1669,6 +2231,25 @@
           () => showToast(`URL: ${url}`, 'info')
         );
       }
+    });
+
+    // Add Member form
+    document.getElementById('addMemberForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('newMemberNameInput').value.trim();
+      const role = document.getElementById('newMemberRoleInput').value === 'joint' ? 'joint' : 'personal';
+      const color = document.getElementById('newMemberColorInput').value || '#f59e0b';
+      if (!name) return;
+      runtime.state.members.push({
+        id: uid('mem'),
+        name,
+        role,
+        color
+      });
+      e.target.reset();
+      document.getElementById('newMemberColorInput').value = '#f59e0b';
+      renderMembersManageList();
+      persistChange(`Added member "${name}"`);
     });
 
     // Savings Allocator controls
@@ -1687,38 +2268,46 @@
     });
 
     document.getElementById('btnAutoSplitSavings').addEventListener('click', () => {
-      const summary = computeMonthSummary(runtime.selectedMonth);
-      runtime.plannedAllocations = computeAutoSplitAllocations(summary.allocatableSurplus);
-      renderSavingsAllocatorAndSnapshot(summary);
+      const ctx = getAllocatorSurplusContext(runtime.selectedMonth);
+      runtime.plannedAllocations = computeAutoSplitAllocations(ctx.available);
+      renderSavingsAllocatorAndSnapshot(computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter));
     });
 
     document.getElementById('btnClearSplitSavings').addEventListener('click', () => {
       for (const acc of runtime.state.savingsAccounts) {
         runtime.plannedAllocations[acc.id] = 0;
       }
-      renderSavingsAllocatorAndSnapshot(computeMonthSummary(runtime.selectedMonth));
+      renderSavingsAllocatorAndSnapshot(computeMonthSummary(runtime.selectedMonth, runtime.state, runtime.memberFilter));
     });
 
     document.getElementById('btnCommitAllocation').addEventListener('click', () => {
-      const savingsOnly = (runtime.state.savingsAccounts || []).filter((a) => a.type !== 'asset');
+      const accounts = runtime.state.savingsAccounts || [];
+      const ctx = getAllocatorSurplusContext(runtime.selectedMonth);
+      const sourceMember = getMemberById(ctx.sourceMemberId);
       const txDate = runtime.selectedMonth === getCurrentMonth()
         ? getTodayIso()
         : getLastDayOfMonthIso(runtime.selectedMonth);
 
       let addedCount = 0;
       let totalMoved = 0;
-      for (const acc of savingsOnly) {
+      for (const acc of accounts) {
         const amt = Math.round(Math.max(0, Number(runtime.plannedAllocations[acc.id] || 0)) * 100) / 100;
         if (amt > 0) {
           runtime.state.savingsTransactions.push({
             id: uid('stx'),
             accountId: acc.id,
+            memberId: ctx.sourceMemberId,
             type: 'deposit',
+            frequency: 'one-off',
             amount: amt,
             date: txDate,
             month: runtime.selectedMonth,
+            dayOfMonth: null,
+            dayOfWeek: null,
+            startMonth: null,
+            endMonth: null,
             category: 'Monthly Allocation',
-            note: `Allocated from ${formatMonthLong(runtime.selectedMonth)} leftover cash`,
+            note: `Allocated from ${sourceMember?.name || 'Household'} (${formatMonthLong(runtime.selectedMonth)} leftover)`,
             createdAt: new Date().toISOString()
           });
           addedCount++;
@@ -1732,7 +2321,7 @@
       }
 
       runtime.plannedAllocations = {};
-      persistChange(`Moved ${formatMoney(totalMoved)} into ${addedCount} savings account(s)`);
+      persistChange(`Allocated ${formatMoney(totalMoved)} from ${sourceMember?.name || 'Household'} into ${addedCount} account(s)`);
     });
 
     document.getElementById('btnGoToSavingsTab').addEventListener('click', () => {
@@ -1760,6 +2349,7 @@
       const title = document.getElementById('entryTitleInput').value.trim();
       const amount = Number(document.getElementById('entryAmountInput').value);
       const category = document.getElementById('entryCategoryInput').value.trim() || 'General';
+      const memberId = document.getElementById('entryMemberSelect').value || getMembers()[0]?.id;
       const essential = document.getElementById('entryEssentialSelect').value === 'true';
       const status = document.getElementById('entryStatusInput').value;
       const notes = document.getElementById('entryNotesInput').value.trim();
@@ -1786,6 +2376,7 @@
             ...(runtime.state.monthOverrides[overrideKey] || {}),
             status,
             amount,
+            memberId,
             note: notes,
             updatedAt: new Date().toISOString()
           };
@@ -1799,6 +2390,7 @@
         existing.title = title;
         existing.amount = amount;
         existing.category = category;
+        existing.memberId = memberId;
         existing.essential = kind === 'income' ? false : essential;
         existing.notes = notes;
 
@@ -1861,6 +2453,7 @@
         kind,
         title,
         category,
+        memberId,
         frequency: freq,
         amount,
         dayOfMonth,
@@ -1884,46 +2477,57 @@
       persistChange(`Added ${freq} ${kind}: "${title}"`);
     });
 
-    // Delete modal buttons
+    // Delete / Stop modal buttons (handles both entries and savingsTransactions)
     document.getElementById('btnStopFromMonth').addEventListener('click', () => {
       const id = runtime.pendingDeleteId;
-      const entry = runtime.state.entries.find((e) => e.id === id);
-      if (!entry) return;
+      const isStx = runtime.pendingDeleteKind === 'stx';
+      const list = isStx ? runtime.state.savingsTransactions : runtime.state.entries;
+      const item = list.find((x) => x.id === id);
+      if (!item) return;
+
       const prevMonth = shiftMonth(runtime.selectedMonth, -1);
-      if (entry.startMonth && prevMonth < entry.startMonth) {
-        runtime.state.entries = runtime.state.entries.filter((e) => e.id !== id);
+      if (item.startMonth && prevMonth < item.startMonth) {
+        if (isStx) runtime.state.savingsTransactions = list.filter((x) => x.id !== id);
+        else runtime.state.entries = list.filter((x) => x.id !== id);
       } else {
-        entry.endMonth = prevMonth;
+        item.endMonth = prevMonth;
       }
       closeModal('deleteEntryModal');
-      persistChange(`Stopped "${entry.title}" from ${formatMonthShort(runtime.selectedMonth)} onwards`);
+      persistChange(`Stopped payment from ${formatMonthShort(runtime.selectedMonth)} onwards`);
     });
 
     document.getElementById('btnDeleteAllMonths').addEventListener('click', () => {
       const id = runtime.pendingDeleteId;
-      const entry = runtime.state.entries.find((e) => e.id === id);
-      runtime.state.entries = runtime.state.entries.filter((e) => e.id !== id);
+      if (runtime.pendingDeleteKind === 'stx') {
+        runtime.state.savingsTransactions = runtime.state.savingsTransactions.filter((t) => t.id !== id);
+      } else {
+        runtime.state.entries = runtime.state.entries.filter((e) => e.id !== id);
+      }
       closeModal('deleteEntryModal');
-      persistChange(`Deleted "${entry ? entry.title : 'item'}" from all months`);
+      persistChange('Deleted recurring item from all months');
     });
 
     document.getElementById('btnConfirmOneOffDelete').addEventListener('click', () => {
       const id = runtime.pendingDeleteId;
-      const entry = runtime.state.entries.find((e) => e.id === id);
-      runtime.state.entries = runtime.state.entries.filter((e) => e.id !== id);
+      if (runtime.pendingDeleteKind === 'stx') {
+        runtime.state.savingsTransactions = runtime.state.savingsTransactions.filter((t) => t.id !== id);
+      } else {
+        runtime.state.entries = runtime.state.entries.filter((e) => e.id !== id);
+      }
       closeModal('deleteEntryModal');
-      persistChange(`Deleted "${entry ? entry.title : 'payment'}"`);
+      persistChange('Deleted payment');
     });
 
     // Savings account modal & submit
     document.getElementById('btnAddSavingsAccount').addEventListener('click', () => openSavingsAccountModal());
-    document.getElementById('btnRecordSavingsTx').addEventListener('click', () => openSavingsTxModal({ type: 'deposit' }));
+    document.getElementById('btnRecordSavingsTx').addEventListener('click', () => openSavingsTxModal({ type: 'deposit', freq: 'one-off' }));
 
     document.getElementById('savingsAccountForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const id = document.getElementById('savAccIdInput').value;
       const name = document.getElementById('savAccNameInput').value.trim();
       const type = document.getElementById('savAccTypeInput').value;
+      const memberId = document.getElementById('savAccMemberSelect').value || getMembers()[0]?.id;
       const openingBalance = Number(document.getElementById('savAccOpeningInput').value || 0);
       const targetAmount = Math.max(0, Number(document.getElementById('savAccTargetInput').value || 0));
       const interestRate = Number(document.getElementById('savAccRateInput').value || 0);
@@ -1936,7 +2540,7 @@
       if (id) {
         const acc = runtime.state.savingsAccounts.find((a) => a.id === id);
         if (!acc) return;
-        Object.assign(acc, { name, type, openingBalance, targetAmount, interestRate, allocationWeight, color, notes });
+        Object.assign(acc, { name, type, memberId, openingBalance, targetAmount, interestRate, allocationWeight, color, notes });
         closeModal('savingsAccountModal');
         persistChange(`Updated "${name}"`);
       } else {
@@ -1944,6 +2548,7 @@
           id: uid('sav'),
           name,
           type,
+          memberId,
           openingBalance,
           targetAmount,
           interestRate,
@@ -1957,21 +2562,29 @@
       }
     });
 
-    // Savings transaction modal
+    // Savings transaction modal segmented buttons & submit
     document.querySelectorAll('[data-stx-type]').forEach((btn) => {
       btn.addEventListener('click', () => {
         runtime.stxModalType = btn.dataset.stxType;
-        syncStxTypeUi();
+        syncStxModalVisibility();
+      });
+    });
+
+    document.querySelectorAll('[data-stx-freq]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        runtime.stxModalFreq = btn.dataset.stxFreq;
+        syncStxModalVisibility();
       });
     });
 
     document.getElementById('savingsTxForm').addEventListener('submit', (e) => {
       e.preventDefault();
+      const txId = document.getElementById('stxIdInput').value;
       const accountId = document.getElementById('stxAccountSelect').value;
+      const memberId = document.getElementById('stxMemberSelect').value || getMembers()[0]?.id;
       const rawAmount = Number(document.getElementById('stxAmountInput').value);
-      const date = document.getElementById('stxDateInput').value || getTodayIso();
-      const month = date.slice(0, 7);
       const category = document.getElementById('stxCategoryInput').value.trim() || 'Movement';
+      const status = document.getElementById('stxStatusInput').value;
       const note = document.getElementById('stxNoteInput').value.trim();
 
       if (!accountId || !Number.isFinite(rawAmount) || rawAmount === 0) {
@@ -1979,31 +2592,135 @@
         return;
       }
 
-      const amount = runtime.stxModalType === 'adjustment' ? rawAmount : Math.abs(rawAmount);
+      const freq = runtime.stxModalFreq;
+      const type = runtime.stxModalType;
+      const amount = type === 'adjustment' ? rawAmount : Math.abs(rawAmount);
+
+      if (txId) {
+        const existing = runtime.state.savingsTransactions.find((t) => t.id === txId);
+        if (!existing) return;
+
+        const editScope = freq !== 'one-off'
+          ? document.querySelector('input[name="stxEditScope"]:checked')?.value || 'series'
+          : 'series';
+
+        const overrideKey = `${txId}_${runtime.selectedMonth}`;
+        if (editScope === 'month' && freq !== 'one-off') {
+          runtime.state.monthOverrides[overrideKey] = {
+            ...(runtime.state.monthOverrides[overrideKey] || {}),
+            status,
+            amount,
+            memberId,
+            note,
+            updatedAt: new Date().toISOString()
+          };
+          closeModal('savingsTxModal');
+          persistChange(`Updated ${formatMonthShort(runtime.selectedMonth)} savings payment override`);
+          return;
+        }
+
+        existing.accountId = accountId;
+        existing.memberId = memberId;
+        existing.type = type;
+        existing.frequency = freq;
+        existing.amount = amount;
+        existing.category = category;
+        existing.note = note;
+
+        if (freq === 'one-off') {
+          const exactDate = document.getElementById('stxDateInput').value || getTodayIso();
+          const m = document.getElementById('stxOneOffMonthInput').value || exactDate.slice(0, 7);
+          existing.month = m;
+          existing.date = exactDate;
+          existing.startMonth = null;
+          existing.endMonth = null;
+        } else if (freq === 'weekly') {
+          existing.dayOfWeek = Number(document.getElementById('stxDayOfWeekInput').value);
+          existing.startMonth = document.getElementById('stxWeeklyStartInput').value || runtime.selectedMonth;
+          existing.endMonth = document.getElementById('stxWeeklyEndInput').value || null;
+          existing.month = null;
+          existing.date = null;
+        } else {
+          existing.dayOfMonth = Number(document.getElementById('stxDayOfMonthInput').value || 1);
+          existing.startMonth = document.getElementById('stxMonthlyStartInput').value || runtime.selectedMonth;
+          existing.endMonth = document.getElementById('stxMonthlyEndInput').value || null;
+          existing.month = null;
+          existing.date = null;
+        }
+
+        const targetMonth = freq === 'one-off' ? existing.month : runtime.selectedMonth;
+        runtime.state.monthOverrides[`${txId}_${targetMonth}`] = {
+          ...(runtime.state.monthOverrides[`${txId}_${targetMonth}`] || {}),
+          status,
+          updatedAt: new Date().toISOString()
+        };
+        delete runtime.state.monthOverrides[`${txId}_${targetMonth}`].amount;
+
+        closeModal('savingsTxModal');
+        persistChange('Updated savings/asset payment');
+        return;
+      }
+
+      // Create new savings/asset payment or movement
+      const newId = uid('stx');
+      let txMonth = null;
+      let txDate = null;
+      let startMonth = null;
+      let endMonth = null;
+      let dayOfMonth = null;
+      let dayOfWeek = null;
+
+      if (freq === 'one-off') {
+        txDate = document.getElementById('stxDateInput').value || getTodayIso();
+        txMonth = document.getElementById('stxOneOffMonthInput').value || txDate.slice(0, 7);
+      } else if (freq === 'weekly') {
+        dayOfWeek = Number(document.getElementById('stxDayOfWeekInput').value);
+        startMonth = document.getElementById('stxWeeklyStartInput').value || runtime.selectedMonth;
+        endMonth = document.getElementById('stxWeeklyEndInput').value || null;
+      } else {
+        dayOfMonth = Number(document.getElementById('stxDayOfMonthInput').value || 1);
+        startMonth = document.getElementById('stxMonthlyStartInput').value || runtime.selectedMonth;
+        endMonth = document.getElementById('stxMonthlyEndInput').value || null;
+      }
+
       runtime.state.savingsTransactions.push({
-        id: uid('stx'),
+        id: newId,
         accountId,
-        type: runtime.stxModalType,
+        memberId,
+        type,
+        frequency: freq,
         amount,
-        date,
-        month,
+        date: txDate,
+        month: txMonth,
+        dayOfMonth,
+        dayOfWeek,
+        startMonth,
+        endMonth,
         category,
         note,
         createdAt: new Date().toISOString()
       });
 
+      const statusTargetMonth = freq === 'one-off' ? txMonth : runtime.selectedMonth;
+      runtime.state.monthOverrides[`${newId}_${statusTargetMonth}`] = {
+        status,
+        updatedAt: new Date().toISOString()
+      };
+
       closeModal('savingsTxModal');
       persistChange(
-        runtime.stxModalType === 'deposit'
-          ? `Added ${formatMoney(amount)} to savings`
-          : runtime.stxModalType === 'withdrawal'
-            ? `Removed ${formatMoney(amount)} from savings`
-            : `Recorded adjustment of ${formatMoney(amount, true)}`
+        freq !== 'one-off'
+          ? `Added ${freq} ${type === 'withdrawal' ? 'removal' : 'payment'} (${formatMoney(amount)})`
+          : type === 'deposit'
+            ? `Added ${formatMoney(amount)} to savings/asset`
+            : type === 'withdrawal'
+              ? `Removed ${formatMoney(amount)} from savings/asset`
+              : `Recorded adjustment of ${formatMoney(amount, true)}`
       );
     });
 
     // Savings ledger filters
-    ['ledgerAccountFilter', 'ledgerScopeFilter', 'ledgerTypeFilter'].forEach((id) => {
+    ['ledgerAccountFilter', 'ledgerMemberFilter', 'ledgerFreqFilter', 'ledgerScopeFilter', 'ledgerTypeFilter'].forEach((id) => {
       document.getElementById(id).addEventListener('change', renderSavingsLedger);
     });
     document.getElementById('ledgerSearchInput').addEventListener('input', renderSavingsLedger);
@@ -2012,7 +2729,7 @@
     ['globalSearchInput', 'searchFromMonth', 'searchToMonth'].forEach((id) => {
       document.getElementById(id).addEventListener('input', renderGlobalSearch);
     });
-    ['searchHorizonFilter', 'searchKindFilter', 'searchFreqFilter', 'searchCategoryFilter', 'searchStatusFilter'].forEach((id) => {
+    ['searchHorizonFilter', 'searchKindFilter', 'searchFreqFilter', 'searchCategoryFilter', 'searchMemberFilter', 'searchStatusFilter'].forEach((id) => {
       document.getElementById(id).addEventListener('change', renderGlobalSearch);
     });
 

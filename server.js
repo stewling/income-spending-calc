@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
-const { createSeedState, createEmptyState, getCurrentMonth } = require('./seed-data');
+const { DEFAULT_MEMBERS, createSeedState, createEmptyState, getCurrentMonth } = require('./seed-data');
 
 const DEFAULT_PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -39,12 +39,54 @@ function getLanUrls(port) {
   return urls;
 }
 
+function normalizeMembers(rawMembers) {
+  if (!Array.isArray(rawMembers) || rawMembers.length === 0) {
+    return DEFAULT_MEMBERS.map((m) => ({ ...m }));
+  }
+  const seen = new Set();
+  const list = [];
+  for (const m of rawMembers) {
+    if (!m || typeof m !== 'object') continue;
+    const id = typeof m.id === 'string' && m.id.trim() ? m.id.trim() : null;
+    const name = typeof m.name === 'string' && m.name.trim() ? m.name.trim().slice(0, 48) : null;
+    if (!id || !name || seen.has(id)) continue;
+    seen.add(id);
+    list.push({
+      id,
+      name,
+      role: m.role === 'joint' ? 'joint' : 'personal',
+      color: typeof m.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(m.color) ? m.color : '#38bdf8'
+    });
+  }
+  return list.length > 0 ? list : DEFAULT_MEMBERS.map((m) => ({ ...m }));
+}
+
 function normalizeState(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw new Error('State payload must be a JSON object.');
   }
   const base = createEmptyState();
   const settings = raw.settings && typeof raw.settings === 'object' ? raw.settings : {};
+  const members = normalizeMembers(raw.members);
+  const validMemberIds = new Set(members.map((m) => m.id));
+  const fallbackMemberId = members[0].id;
+
+  const entries = (Array.isArray(raw.entries) ? raw.entries : []).map((e) => ({
+    ...e,
+    memberId: e && validMemberIds.has(e.memberId) ? e.memberId : fallbackMemberId
+  }));
+
+  const savingsAccounts = (Array.isArray(raw.savingsAccounts) ? raw.savingsAccounts : []).map((a) => ({
+    ...a,
+    memberId: a && validMemberIds.has(a.memberId) ? a.memberId : fallbackMemberId
+  }));
+
+  const savingsTransactions = (Array.isArray(raw.savingsTransactions) ? raw.savingsTransactions : []).map((tx) => ({
+    ...tx,
+    frequency: ['one-off', 'weekly', 'monthly'].includes(tx?.frequency) ? tx.frequency : 'one-off',
+    memberId: tx && validMemberIds.has(tx.memberId) ? tx.memberId : fallbackMemberId
+  }));
+
   return {
     version: 1,
     settings: {
@@ -59,12 +101,13 @@ function normalizeState(raw) {
         ? settings.householdName.trim().slice(0, 80)
         : base.settings.householdName
     },
-    entries: Array.isArray(raw.entries) ? raw.entries : [],
+    members,
+    entries,
     monthOverrides: raw.monthOverrides && typeof raw.monthOverrides === 'object' && !Array.isArray(raw.monthOverrides)
       ? raw.monthOverrides
       : {},
-    savingsAccounts: Array.isArray(raw.savingsAccounts) ? raw.savingsAccounts : [],
-    savingsTransactions: Array.isArray(raw.savingsTransactions) ? raw.savingsTransactions : []
+    savingsAccounts,
+    savingsTransactions
   };
 }
 
@@ -131,7 +174,7 @@ class LocalStorageStore {
   getState() {
     const row = this.db.prepare('SELECT state_json, revision, updated_at FROM budget_state WHERE id = 1').get();
     return {
-      state: JSON.parse(row.state_json),
+      state: normalizeState(JSON.parse(row.state_json)),
       revision: row.revision,
       updatedAt: row.updated_at
     };

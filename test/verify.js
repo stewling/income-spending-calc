@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const http = require('node:http');
 const os = require('node:os');
 const path = require('node:path');
-const { createBudgetServer } = require('../server');
+const { createBudgetServer, normalizeState } = require('../server');
 const { getCurrentMonth, shiftMonth } = require('../seed-data');
 
 function httpGetWithHost(port, reqPath, hostHeader) {
@@ -61,6 +61,7 @@ async function runTests() {
     assert.equal(stateRes.status, 200);
     const stateJson = await stateRes.json();
     assert.equal(stateJson.revision, 1);
+    assert.ok(Array.isArray(stateJson.state.members) && stateJson.state.members.length >= 3, 'Seeded state should include default members');
     assert.ok(Array.isArray(stateJson.state.entries) && stateJson.state.entries.length > 10);
     assert.ok(Array.isArray(stateJson.state.savingsAccounts) && stateJson.state.savingsAccounts.length >= 4);
     assert.ok(Array.isArray(stateJson.state.savingsTransactions) && stateJson.state.savingsTransactions.length >= 6);
@@ -74,17 +75,37 @@ async function runTests() {
     const hasFutureOneOff = stateJson.state.entries.some((e) => e.frequency === 'one-off' && e.month > nowMonth);
     const hasWeeklyDd = stateJson.state.entries.some((e) => e.frequency === 'weekly' && e.kind === 'outgoing');
     const hasMonthlyDd = stateJson.state.entries.some((e) => e.frequency === 'monthly' && e.kind === 'outgoing');
+    const hasMonthlySavings = stateJson.state.savingsTransactions.some((t) => t.frequency === 'monthly');
+    const hasWeeklySavings = stateJson.state.savingsTransactions.some((t) => t.frequency === 'weekly');
     assert.ok(hasPastOneOff && hasFutureOneOff && hasWeeklyDd && hasMonthlyDd, 'Seed data must cover past/future one-offs, weekly DD, and monthly DD');
-    console.log('PASS: Initial seeded state includes past, current, and future entries + DDs + savings');
+    assert.ok(hasMonthlySavings && hasWeeklySavings, 'Seed data must cover monthly and weekly savings/asset payments');
+    console.log('PASS: Initial seeded state includes members, past/current/future entries, DDs, and recurring savings/asset payments');
 
-    // 4. PUT /api/state persists custom income, one-off, weekly DD, monthly DD, and savings deposit/withdrawal
+    // 3b. normalizeState backwards compatibility for legacy data without members/memberId/frequency
+    const legacyNormalized = normalizeState({
+      entries: [{ id: 'leg_1', kind: 'outgoing', title: 'Legacy Bill', frequency: 'monthly', amount: 50 }],
+      savingsAccounts: [{ id: 'leg_acc', name: 'Legacy Asset', type: 'asset', openingBalance: 1000 }],
+      savingsTransactions: [{ id: 'leg_stx', accountId: 'leg_acc', type: 'deposit', amount: 100, month: nowMonth }]
+    });
+    assert.ok(legacyNormalized.members.length === 3);
+    assert.equal(legacyNormalized.entries[0].memberId, 'mem_joint');
+    assert.equal(legacyNormalized.savingsAccounts[0].memberId, 'mem_joint');
+    assert.equal(legacyNormalized.savingsTransactions[0].frequency, 'one-off');
+    assert.equal(legacyNormalized.savingsTransactions[0].memberId, 'mem_joint');
+    console.log('PASS: normalizeState upgrades legacy records with default memberId and one-off frequency');
+
+    // 4. PUT /api/state persists custom member, entries with memberId, recurring savings/asset payments, and asset allocation
     const modifiedState = structuredClone(stateJson.state);
+    modifiedState.members.push({ id: 'mem_custom', name: 'Alex Card', role: 'personal', color: '#f59e0b' });
+    const assetAcc = modifiedState.savingsAccounts.find((a) => a.type === 'asset');
+    assert.ok(assetAcc, 'Expected a seeded asset account');
     modifiedState.entries.push(
       {
         id: 'test_inc_1',
         kind: 'income',
         title: 'Test Side Gig',
         category: 'Freelance',
+        memberId: 'mem_custom',
         frequency: 'one-off',
         amount: 250,
         month: nowMonth,
@@ -97,6 +118,7 @@ async function runTests() {
         kind: 'outgoing',
         title: 'Test Weekly Box',
         category: 'Groceries',
+        memberId: 'mem_partner',
         frequency: 'weekly',
         amount: 35,
         dayOfWeek: 4,
@@ -110,6 +132,7 @@ async function runTests() {
         kind: 'outgoing',
         title: 'Future Annual Flight',
         category: 'Leisure & Travel',
+        memberId: 'mem_joint',
         frequency: 'one-off',
         amount: 600,
         month: futureMonth,
@@ -122,7 +145,9 @@ async function runTests() {
       {
         id: 'test_stx_dep',
         accountId: modifiedState.savingsAccounts[0].id,
+        memberId: 'mem_custom',
         type: 'deposit',
+        frequency: 'one-off',
         amount: 425,
         date: `${nowMonth}-18`,
         month: nowMonth,
@@ -130,9 +155,24 @@ async function runTests() {
         note: 'Test savings deposit'
       },
       {
+        id: 'test_stx_asset_monthly',
+        accountId: assetAcc.id,
+        memberId: 'mem_mine',
+        type: 'deposit',
+        frequency: 'monthly',
+        amount: 150,
+        dayOfMonth: 10,
+        startMonth: nowMonth,
+        endMonth: null,
+        category: 'Monthly Allocation',
+        note: 'Recurring monthly asset allocation'
+      },
+      {
         id: 'test_stx_with',
         accountId: modifiedState.savingsAccounts[0].id,
+        memberId: 'mem_joint',
         type: 'withdrawal',
+        frequency: 'one-off',
         amount: 75,
         date: `${nowMonth}-18`,
         month: nowMonth,
@@ -162,10 +202,12 @@ async function runTests() {
     const reloadedRes = await fetch(`${baseUrl}/api/state`);
     const reloadedJson = await reloadedRes.json();
     assert.equal(reloadedJson.revision, 2);
-    assert.ok(reloadedJson.state.entries.some((e) => e.id === 'test_inc_1'));
+    assert.ok(reloadedJson.state.members.some((m) => m.id === 'mem_custom'));
+    assert.equal(reloadedJson.state.entries.find((e) => e.id === 'test_inc_1')?.memberId, 'mem_custom');
     assert.ok(reloadedJson.state.entries.some((e) => e.id === 'test_out_weekly'));
     assert.ok(reloadedJson.state.entries.some((e) => e.id === 'test_out_future'));
     assert.ok(reloadedJson.state.savingsTransactions.some((t) => t.id === 'test_stx_dep'));
+    assert.equal(reloadedJson.state.savingsTransactions.find((t) => t.id === 'test_stx_asset_monthly')?.frequency, 'monthly');
     assert.ok(reloadedJson.state.savingsTransactions.some((t) => t.id === 'test_stx_with'));
 
     const backupFile = JSON.parse(fs.readFileSync(path.join(tempDataDir, 'household-budget.json'), 'utf8'));
