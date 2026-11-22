@@ -40,12 +40,46 @@
     '#38bdf8', '#818cf8', '#10b981', '#f59e0b',
     '#f43f5e', '#a78bfa', '#06b6d4', '#fb7185', '#34d399'
   ];
-  const EMOJI_PRESETS = {
-    outgoing: ['🏠', '⚡', '💧', '🌐', '🛒', '🚗', '🛡️', '📺', '📱', '🧒', '🍔', '☕', '💊', '✈️', '🎁', '🛍️', '🔧', '💳', '🧾', '🐾'],
-    income: ['💼', '💷', '💰', '💻', '🎨', '🎉', '🧾', '📈', '📦', '🏆', '🤝', '🪙', '🏠', '🛠️', '✨', '🏦'],
-    savingsAccount: ['🏦', '📈', '💰', '🪙', '🏡', '🚗', '✈️', '🎓', '💍', '🛠️', '💎', '🚀', '🛡️', '🌴', '📦', '👶'],
-    savingsTx: ['🏦', '📈', '💰', '🪙', '✈️', '🏡', '🚗', '💸', '🔧', '⚖️', '🛡️', '🎁', '🏖️', '💳', '🆘', '✨']
+  const EMOJI_CATEGORIES = [
+    { id: 'all', label: 'All', icon: '🌟' },
+    { id: 'finance', label: 'Finance & Bills', icon: '💰' },
+    { id: 'objects', label: 'Home & Objects', icon: '🏠' },
+    { id: 'food', label: 'Food & Drink', icon: '🍔' },
+    { id: 'travel', label: 'Travel & Places', icon: '🚗' },
+    { id: 'activities', label: 'Activities & Gifts', icon: '⚽' },
+    { id: 'animals', label: 'Animals & Nature', icon: '🐾' },
+    { id: 'smileys', label: 'Smileys & People', icon: '😀' },
+    { id: 'symbols', label: 'Symbols & Flags', icon: '✨' }
+  ];
+
+  const RAW_EMOJI_GROUPS = {
+    "finance": "💰\tmoney bag salary budget savings|💵\tbanknote dollar cash income bill|💷\tbanknote pound gbp cash income salary|💶\tbanknote euro eur cash income|💳\tcredit card debit payment bank|🏦\tbank savings isa mortgage|🪙\tcoin savings pot cash|🧾\treceipt bill invoice tax expense|📈\tchart upwards trend investment stock isa|📉\tchart downwards trend|💼\tbriefcase work salary job income|💸\tmoney wings spend withdrawal outgoing|🏠\thouse building home mortgage rent|🏡\thouse garden home property asset|⚡\thigh voltage electric energy gas utility|💧\twater utility droplet|🌐\tglobe meridians internet broadband wifi fibre|📱\tmobile phone sim telecom|🛡️\tshield insurance warranty security|📺\ttv streaming television subscription|🛒\tshopping trolley cart groceries food supermarket|🚗\tautomobile car auto mot service vehicle motor fuel|⛽\tfuel pump petrol diesel gas station|✈️\tairplane flight holiday travel|🎁\twrapped present gift christmas birthday|🔧\twrench repair boiler plumber service|🛠️\thammer wrench|⚖️\tscales balance scale adjust valuation equity|🎓\tgraduation cap uni university tuition student|🏥\thospital|💊\tpill medicine pharmacy health|🩺\tstethoscope doctor medical health|💎\tgem stone|🧳\tluggage|🛍️\tshopping bags|🏷️\tlabel|📊\tbar chart|🎟️\tadmission tickets|🏛️\tclassical building|🏧\tautomated teller machine|👛\tpurse|👜\thandbag|💱\tcurrency exchange|💲\theavy dollar|💴\tbanknote yen|💹\tchart upwards trend yen|📋\tclipboard|📑\tbookmark tabs|🔐\tclosed lock key|🔒\tlock|🗂️\tcard index dividers|🚽\ttoilet|🛏️\tbed|🧮\tabacus|🧹\tbroom|🪑\tchair|🪪\tidentification card",
+    "objects": "💡\telectric light bulb idea electricity power|🖥️\tdesktop computer|💻\tpersonal computer|⌨️\tkeyboard|🖱️\tthree mouse|🖨️\tprinter|📷\tcamera|📻\tradio|⏰\talarm clock|📅\tcalendar date schedule monthly|📝\tmemo|📚\tbooks study education|🔑\tkey|🗝️\told key|🔓\topen lock|📦\tpackage|✉️\tenvelope|🛋️\tcouch lamp|⌚\twatch|⌛\thourglass|⏱️\tstopwatch|⏲️\ttimer clock|⏳\thourglass flowing sand|☎️\tblack telephone|⚒️\thammer pick|⚗️\talembic|⚙️\tgear|⚰️\tcoffin|⚱️\tfuneral urn|⛏️\tpick|⛑️\thelmet white cross|⛓️\tchains|✂️\tblack scissors|✏️\tpencil|✒️\tblack nib|👑\tcrown|👒\twomans hat|👓\teyeglasses|👔\tnecktie|👕\tt shirt|👖\tjeans|👗\tdress|👘\tkimono|👙\tbikini|👚\twomans clothes|👝\tpouch|👞\tmans shoe|👟\tathletic shoe|👠\thigh heeled shoe|👡\twomans sandal|👢\twomans boots|👣\tfootprints|💈\tbarber pole|💉\tsyringe|💋\tkiss mark|💌\tlove letter|💍\tring|💐\tbouquet|💒\twedding|💠\tdiamond shape a dot inside|💢\tanger|💣\tbomb|💤\tsleeping|💥\tcollision|💦\tsplashing sweat|💨\tdash|💩\tpile poo|💪\tflexed biceps|💫\tdizzy|💬\tspeech balloon|💭\tthought balloon|💮\twhite flower|💯\thundred points|💺\tseat|💽\tminidisc|💾\tfloppy disk|💿\toptical disc|📀\tdvd|📁\tfile folder|📂\topen file folder|📃\tpage curl|📄\tpage facing up|📆\ttear off calendar|📇\tcard index|📌\tpushpin|📍\tround pushpin|📎\tpaperclip|📏\tstraight ruler|📐\ttriangular ruler|📒\tledger|📓\tnotebook|📔\tnotebook decorative cover|📕\tclosed book|📖\topen book|📗\tgreen book|📘\tblue book|📙\torange book|📛\tname badge|📜\tscroll|📞\ttelephone receiver|📟\tpager|📠\tfax machine|📡\tsatellite antenna|📢\tpublic address loudspeaker|📣\tcheering megaphone|📤\toutbox tray|📥\tinbox tray|📧\te mail|📨\tincoming envelope|📩\tenvelope downwards arrow above|📪\tclosed mailbox lowered flag|📫\tclosed mailbox raised flag|📬\topen mailbox raised flag|📭\topen mailbox lowered flag|📮\tpostbox|📯\tpostal horn|📰\tnewspaper|📲\tmobile phone rightwards arrow at left|📳\tvibration mode|📴\tmobile phone off|📵\tno mobile phones|📶\tantenna bars|📸\tcamera flash|📹\tvideo camera|📼\tvideocassette|📽️\tfilm projector|🔀\ttwisted rightwards arrows|🔁\tclockwise rightwards leftwards open circle arrows|🔂\tclockwise rightwards leftwards open circle arrows|🔃\tclockwise downwards upwards open circle arrows|🔄\tanticlockwise downwards upwards open circle arrows|🔅\tlow brightness|🔆\thigh brightness|🔇\tspeaker cancellation stroke|🔈\tspeaker|🔉\tspeaker one sound wave|🔊\tspeaker three sound waves|🔋\tbattery|🔌\telectric plug|🔍\tleft pointing magnifying glass|🔎\tright pointing magnifying glass|🔏\tlock ink pen|🔔\tbell|🔕\tbell cancellation stroke|🔖\tbookmark|🔗\tlink|🔘\tradio|🔙\tback leftwards arrow above|🔚\tend leftwards arrow above|🔛\ton exclamation mark left right arrow|🔜\tsoon rightwards arrow above|🔝\ttop upwards arrow above|🔞\tno one under eighteen|🔟\tkeycap ten|🔠\tinput latin capital letters|🔡\tinput latin small letters|🔢\tinput numbers|🔣\tinput symbols|🔤\tinput latin letters|🔦\telectric torch|🔨\thammer|🔩\tnut bolt|🔪\thocho|🔫\tpistol|🔬\tmicroscope|🔭\ttelescope|🔮\tcrystal ball|🔯\tsix pointed star middle dot|🕯️\tcandle|🕰️\tmantelpiece clock|🕳️\thole|🕶️\tdark sunglasses|🕹️\tjoystick|🖇️\tlinked paperclips|🖊️\tlower left ballpoint pen|🖋️\tlower left fountain pen|🖌️\tlower left paintbrush|🖍️\tlower left crayon|🖤\tblack heart|🖲️\ttrackball|🖼️\tframe picture|🗃️\tcard file box|🗄️\tfile cabinet|🗑️\twastebasket|🗒️\tspiral note pad|🗓️\tspiral calendar pad|🗜️\tcompression|🗞️\trolled up newspaper|🗨️\tleft speech bubble|🗯️\tright anger bubble|🗳️\tballot box|🛌\tsleeping accommodation|🛎️\tbellhop bell|🛐\tplace worship|🛑\toctagonal|🛕\thindu temple|🛖\thut|🛗\televator|🧠\tbrain|🧢\tbilled cap|🧣\tscarf|🧤\tgloves|🧥\tcoat|🧦\tsocks|🧪\ttest tube|🧫\tpetri dish|🧬\tdna double helix|🧯\tfire extinguisher|🧰\ttoolbox|🧱\tbrick|🧲\tmagnet|🧴\tlotion bottle|🧵\tspool thread|🧶\tball yarn|🧷\tsafety pin|🧺\tbasket|🧻\troll paper|🧼\tbar soap|🧽\tsponge|🧿\tnazar amulet|🩱\tone piece swimsuit|🩲\tbriefs|🩳\tshorts|🩴\tthong sandal|🩸\tdrop blood|🩹\tadhesive bandage|🩻\tx ray|🩼\tcrutch|🪐\tringed planet|🪒\trazor|🪓\taxe|🪔\tdiya lamp|🪕\tbanjo|🪖\tmilitary helmet|🪗\taccordion|🪘\tlong drum|🪚\tcarpentry saw|🪛\tscrewdriver|🪜\tladder|🪝\thook|🪞\tmirror|🪟\twindow|🪠\tplunger|🪡\tsewing needle|🪢\tknot|🪣\tbucket|🪤\tmouse trap|🪥\ttoothbrush|🪦\theadstone|🪧\tplacard|🪨\trock|🪩\tmirror ball|🪫\tlow battery|🪬\thamsa|🪭\tfolding hand fan|🪮\thair pick|🪯\tkhanda",
+    "food": "☕\thot beverage coffee cafe tea mug|🍕\tslice pizza food|🍔\thamburger burger takeaway fast food|🍟\tfrench fries|🌮\ttaco|🍣\tsushi|🥗\tgreen salad|🍝\tspaghetti|🍰\tshortcake|🍺\tbeer mug pub drink|🍷\twine glass drink|🥤\tcup straw|🍎\tred apple|🥑\tavocado|🥦\tbroccoli|🍞\tbread|🧀\tcheese wedge|🥚\tegg|🍫\tchocolate bar|🌭\thot dog|🌯\tburrito|🌰\tchestnut|🌶️\thot pepper|🌽\tear maize|🌾\tear rice|🍅\ttomato|🍆\taubergine|🍇\tgrapes|🍈\tmelon|🍉\twatermelon|🍊\ttangerine|🍋\tlemon|🍌\tbanana|🍍\tpineapple|🍏\tgreen apple|🍐\tpear|🍑\tpeach|🍒\tcherries|🍓\tstrawberry|🍖\tmeat on bone|🍗\tpoultry leg|🍘\trice cracker|🍙\trice ball|🍚\tcooked rice|🍛\tcurry rice|🍜\tsteaming bowl|🍠\troasted sweet potato|🍡\tdango|🍢\toden|🍤\tfried shrimp|🍥\tfish cake swirl design|🍦\tsoft ice cream|🍧\tshaved ice|🍨\tice cream|🍩\tdoughnut|🍪\tcookie|🍬\tcandy|🍭\tlollipop|🍮\tcustard|🍯\thoney pot|🍱\tbento box|🍲\tpot food|🍳\tcooking|🍴\tfork knife|🍵\tteacup without handle|🍶\tsake bottle cup|🍸\tcocktail glass|🍹\ttropical drink|🍻\tclinking beer mugs|🍼\tbaby bottle|🍽️\tfork knife plate|🍾\tbottle popping cork|🍿\tpopcorn|🥐\tcroissant|🥒\tcucumber|🥓\tbacon|🥔\tpotato|🥕\tcarrot|🥖\tbaguette bread|🥘\tshallow pan food|🥙\tstuffed flatbread|🥛\tglass milk|🥜\tpeanuts|🥝\tkiwifruit|🥞\tpancakes|🥟\tdumpling|🥠\tfortune cookie|🥡\ttakeout box|🥢\tchopsticks|🥣\tbowl spoon|🥥\tcoconut|🥧\tpie|🥨\tpretzel|🥩\tcut meat|🥪\tsandwich|🥫\tcanned food|🥬\tleafy green|🥭\tmango|🥮\tmoon cake|🥯\tbagel|🧁\tcupcake|🧂\tsalt shaker|🧃\tbeverage box|🧄\tgarlic|🧅\tonion|🧆\tfalafel|🧇\twaffle|🧈\tbutter|🧉\tmate drink|🧊\tice cube|🧋\tbubble tea|🫐\tblueberries|🫑\tbell pepper|🫒\tolive|🫓\tflatbread|🫔\ttamale|🫕\tfondue|🫖\tteapot|🫗\tpouring liquid|🫘\tbeans|🫙\tjar|🫚\tginger root|🫛\tpea pod|🫜\troot vegetable|🫟\tsplatter",
+    "travel": "🚕\ttaxi|🚌\tbus transit commute|🚆\ttrain rail commute|🚇\tmetro|🚲\tbicycle|🛴\tscooter|🚀\trocket|⛵\tsailboat|🚢\tship|🏖️\tbeach umbrella|🏝️\tdesert island|🏔️\tsnow capped mountain|🏕️\tcamping|🏨\thotel|🗺️\tworld map|⚓\tanchor|⛪\tchurch|⛰️\tmountain|⛱️\tumbrella on ground|⛲\tfountain|⛴️\tferry|⛺\ttent|🏗️\tbuilding construction|🏘️\thouse buildings|🏙️\tcityscape|🏚️\tderelict house building|🏜️\tdesert|🏞️\tnational park|🏟️\tstadium|🏢\toffice building|🏣\tjapanese post office|🏤\teuropean post office|🏩\tlove hotel|🏪\tconvenience store|🏫\tschool|🏬\tdepartment store|🏭\tfactory|🏮\tizakaya lantern|🏯\tjapanese castle|🏰\teuropean castle|🗻\tmount fuji|🗼\ttokyo tower|🗽\tstatue liberty|🗾\tsilhouette japan|🗿\tmoyai|🚁\thelicopter|🚂\tsteam locomotive|🚃\trailway car|🚄\thigh speed train|🚅\thigh speed train bullet nose|🚈\tlight rail|🚉\tstation|🚊\ttram|🚋\ttram car|🚍\toncoming bus|🚎\ttrolleybus|🚏\tbus stop|🚐\tminibus|🚑\tambulance|🚒\tfire engine|🚓\tpolice car|🚔\toncoming police car|🚖\toncoming taxi|🚘\toncoming automobile|🚙\trecreational vehicle|🚚\tdelivery truck|🚛\tarticulated lorry|🚜\ttractor|🚝\tmonorail|🚞\tmountain railway|🚟\tsuspension railway|🚠\tmountain cableway|🚡\taerial tramway|🚣\trowboat|🚤\tspeedboat|🚥\thorizontal traffic light|🚦\tvertical traffic light|🚧\tconstruction|🚨\tpolice cars revolving light|🚩\ttriangular flag on post|🚪\tdoor|🚫\tno entry|🚬\tsmoking|🚭\tno smoking|🚮\tput litter in its place|🚯\tdo not litter|🚰\tpotable water|🚱\tnon potable water|🚳\tno bicycles|🚴\tbicyclist|🚵\tmountain bicyclist|🚶\tpedestrian|🚷\tno pedestrians|🚸\tchildren crossing|🚹\tmens|🚺\twomens|🚻\trestroom|🚼\tbaby|🚾\twater closet|🚿\tshower|🛀\tbath|🛁\tbathtub|🛂\tpassport control|🛃\tcustoms|🛄\tbaggage claim|🛅\tleft luggage|🛢️\toil drum|🛣️\tmotorway|🛤️\trailway track|🛥️\tmotor boat|🛩️\tsmall airplane|🛫\tairplane departure|🛬\tairplane arriving|🛰️\tsatellite|🛳️\tpassenger ship|🛵\tmotor scooter|🛶\tcanoe|🛷\tsled|🛸\tflying saucer|🛹\tskateboard|🛺\tauto rickshaw|🛻\tpickup truck|🛼\troller skate|🧭\tcompass",
+    "activities": "⚽\tsoccer ball|🏀\tbasketball hoop|🏈\tamerican football|🎾\ttennis racquet ball|🏐\tvolleyball|⛳\tflag in hole|🏋️\tweight lifter gym fitness workout|🏊\tswimmer|🎮\tvideo game gaming playstation xbox|🎲\tgame die|🎯\tdirect hit|🎨\tartist palette|🎬\tclapper board movie cinema film netflix|🎵\tmusical note music spotify|🎸\tguitar|🎤\tmicrophone|🎧\theadphone|🏆\ttrophy|🥇\tfirst place medal|🎉\tparty popper birthday celebrate|🎊\tconfetti ball|🎈\tballoon|🎃\tjack o lantern|🎄\tchristmas tree xmas holiday|♟️\tblack chess pawn|♠️\tblack spade suit|♣️\tblack club suit|♥️\tblack heart suit|♦️\tblack diamond suit|⚔️\tcrossed swords|⚾\tbaseball|⛷️\tskier|⛸️\tice skate|🀄️\tmahjong tile red dragon|🃏\tplaying card black joker|🎀\tribbon|🎂\tbirthday cake|🎆\tfireworks|🎇\tfirework sparkler|🎋\ttanabata tree|🎌\tcrossed flags|🎍\tpine decoration|🎎\tjapanese dolls|🎏\tcarp streamer|🎐\twind chime|🎑\tmoon viewing ceremony|🎒\tschool satchel|🎖️\tmilitary medal|🎗️\treminder ribbon|🎙️\tstudio microphone|🎚️\tlevel slider|🎛️\tcontrol knobs|🎞️\tfilm frames|🎠\tcarousel horse|🎡\tferris wheel|🎢\troller coaster|🎣\tfishing pole fish|🎥\tmovie camera|🎦\tcinema|🎩\ttop hat|🎪\tcircus tent|🎫\tticket|🎭\tperforming arts|🎰\tslot machine|🎱\tbilliards|🎳\tbowling|🎴\tflower playing cards|🎶\tmultiple musical notes|🎷\tsaxophone|🎹\tmusical keyboard|🎺\ttrumpet|🎻\tviolin|🎼\tmusical score|🎽\trunning shirt sash|🎿\tski boot|🏁\tchequered flag|🏂\tsnowboarder|🏃\trunner|🏄\tsurfer|🏅\tsports medal|🏇\thorse racing|🏉\trugby football|🏌️\tgolfer|🏍️\tracing motorcycle|🏎️\tracing car|🏏\tcricket bat ball|🏑\tfield hockey stick ball|🏒\tice hockey stick puck|🏓\ttable tennis paddle ball|🤼\twrestlers|🤽\twater polo|🤾\thandball|🤿\tdiving mask|🥀\twilted flower|🥁\tdrum drumsticks|🥂\tclinking glasses|🥃\ttumbler glass|🥄\tspoon|🥅\tgoal net|🥈\tsecond place medal|🥉\tthird place medal|🥊\tboxing glove|🥋\tmartial arts uniform|🥌\tcurling stone|🥍\tlacrosse stick ball|🥎\tsoftball|🥏\tflying disc|🧧\tred gift envelope|🧨\tfirecracker|🧩\tjigsaw puzzle piece|🧸\tteddy bear|🩰\tballet shoes|🪀\tyo|🪁\tkite|🪂\tparachute|🪃\tboomerang|🪄\tmagic wand|🪅\tpinata|🪆\tnesting dolls|🪇\tmaracas|🪈\tflute|🪉\tharp|🪏\tshovel",
+    "animals": "🐶\tdog face pet|🐱\tcat face pet|🐭\tmouse face|🐹\thamster face|🐰\trabbit face|🦊\tfox face|🐻\tbear face|🐼\tpanda face|🐨\tkoala|🐯\ttiger face|🦁\tlion face|🐮\tcow face|🐷\tpig face|🐸\tfrog face|🐵\tmonkey face|🐔\tchicken|🐧\tpenguin|🐦\tbird|🦉\towl|🦄\tunicorn face|🐝\thoneybee|🦋\tbutterfly|🐢\tturtle|🐠\ttropical fish|🐳\tspouting whale|🐾\tpaw prints pet dog cat vet|☀️\tblack sun rays|🌈\trainbow|🔥\tfire flame hot|❄️\tsnowflake|🌊\twater wave|🌳\tdeciduous tree|🌸\tcherry blossom|🌻\tsunflower|☁️\tcloud|☂️\tumbrella|☃️\tsnowman|☄️\tcomet|☔\tumbrella rain drops|☘️\tshamrock|⛄\tsnowman without snow|⛅\tsun behind cloud|⛈️\tthunder cloud rain|🌀\tcyclone|🌁\tfoggy|🌂\tclosed umbrella|🌃\tnight stars|🌄\tsunrise over mountains|🌅\tsunrise|🌆\tcityscape at dusk|🌇\tsunset over buildings|🌉\tbridge at night|🌋\tvolcano|🌌\tmilky way|🌍\tearth globe europe africa|🌎\tearth globe americas|🌏\tearth globe asia australia|🌑\tnew moon|🌒\twaxing crescent moon|🌓\tfirst quarter moon|🌔\twaxing gibbous moon|🌕\tfull moon|🌖\twaning gibbous moon|🌗\tlast quarter moon|🌘\twaning crescent moon|🌙\tcrescent moon|🌚\tnew moon face|🌛\tfirst quarter moon face|🌜\tlast quarter moon face|🌝\tfull moon face|🌞\tsun face|🌟\tglowing star|🌠\tshooting star|🌡️\tthermometer|🌤️\twhite sun small cloud|🌥️\twhite sun behind cloud|🌦️\twhite sun behind cloud rain|🌧️\tcloud rain|🌨️\tcloud snow|🌩️\tcloud lightning|🌪️\tcloud tornado|🌫️\tfog|🌬️\twind blowing face|🌱\tseedling|🌲\tevergreen tree|🌴\tpalm tree|🌵\tcactus|🌷\ttulip|🌹\trose|🌺\thibiscus|🌼\tblossom|🌿\therb|🍀\tfour leaf clover|🍁\tmaple leaf|🍂\tfallen leaf|🍃\tleaf fluttering in wind|🍄\tmushroom|🏵️\trosette|🐀\trat|🐁\tmouse|🐂\tox|🐃\twater buffalo|🐄\tcow|🐅\ttiger|🐆\tleopard|🐇\trabbit|🐈\tcat|🐉\tdragon|🐊\tcrocodile|🐋\twhale|🐌\tsnail|🐍\tsnake|🐎\thorse|🐏\tram|🐐\tgoat|🐑\tsheep|🐒\tmonkey|🐓\trooster|🐕\tdog|🐖\tpig|🐗\tboar|🐘\telephant|🐙\toctopus|🐚\tspiral shell|🐛\tbug|🐜\tant|🐞\tlady beetle|🐟\tfish|🐡\tblowfish|🐣\thatching chick|🐤\tbaby chick|🐥\tfront facing baby chick|🐩\tpoodle|🐪\tdromedary camel|🐫\tbactrian camel|🐬\tdolphin|🐲\tdragon face|🐴\thorse face|🐺\twolf face|🐽\tpig nose|🐿️\tchipmunk|🕷️\tspider|🕸️\tspider web|🦀\tcrab|🦂\tscorpion|🦃\tturkey|🦅\teagle|🦆\tduck|🦇\tbat|🦈\tshark|🦌\tdeer|🦍\tgorilla|🦎\tlizard|🦏\trhinoceros|🦐\tshrimp|🦑\tsquid|🦒\tgiraffe face|🦓\tzebra face|🦔\thedgehog|🦕\tsauropod|🦖\tt rex|🦗\tcricket|🦘\tkangaroo|🦙\tllama|🦚\tpeacock|🦛\thippopotamus|🦜\tparrot|🦝\traccoon|🦞\tlobster|🦟\tmosquito|🦠\tmicrobe|🦡\tbadger|🦢\tswan|🦣\tmammoth|🦤\tdodo|🦥\tsloth|🦦\totter|🦧\torangutan|🦨\tskunk|🦩\tflamingo|🦪\toyster|🦫\tbeaver|🦬\tbison|🦭\tseal|🦮\tguide dog|🦯\tprobing cane|🪰\tfly|🪱\tworm|🪲\tbeetle|🪳\tcockroach|🪴\tpotted plant|🪵\twood|🪶\tfeather|🪷\tlotus|🪸\tcoral|🪹\tempty nest|🪺\tnest eggs|🪻\thyacinth|🪼\tjellyfish|🪽\twing|🪾\tleafless tree|🪿\tgoose",
+    "smileys": "😀\tgrinning face|😁\tgrinning face smiling eyes|😂\tface tears joy|😃\tsmiling face open mouth|😄\tsmiling face open mouth eyes|😅\tsmiling face open mouth cold sweat|😆\tsmiling face open mouth tightly closed|😇\tsmiling face halo|😈\tsmiling face horns|😉\twinking face|😊\tsmiling face eyes|😋\tface savouring delicious food|😌\trelieved face|😍\tsmiling face heart shaped eyes|😎\tsmiling face sunglasses|😏\tsmirking face|😐\tneutral face|😑\texpressionless face|😒\tunamused face|😓\tface cold sweat|😔\tpensive face|😕\tconfused face|😖\tconfounded face|😗\tkissing face|😘\tface throwing a kiss|😙\tkissing face smiling eyes|😚\tkissing face closed eyes|😛\tface stuck out tongue|😜\tface stuck out tongue winking eye|😝\tface stuck out tongue tightly closed|😞\tdisappointed face|😟\tworried face|😠\tangry face|😡\tpouting face|😢\tcrying face|😣\tpersevering face|😤\tface look triumph|😥\tdisappointed but relieved face|😦\tfrowning face open mouth|😧\tanguished face|😨\tfearful face|😩\tweary face|😪\tsleepy face|😫\ttired face|😬\tgrimacing face|😭\tloudly crying face|😮\tface open mouth|😯\thushed face|😰\tface open mouth cold sweat|😱\tface screaming in fear|😲\tastonished face|😳\tflushed face|😴\tsleeping face|😵\tdizzy face|😶\tface without mouth|😷\tface medical mask|😸\tgrinning cat face smiling eyes|😹\tcat face tears joy|😺\tsmiling cat face open mouth|😻\tsmiling cat face heart shaped eyes|😼\tcat face wry smile|😽\tkissing cat face closed eyes|😾\tpouting cat face|😿\tcrying cat face|🙀\tweary cat face|🙁\tslightly frowning face|🙂\tslightly smiling face|🙃\tupside down face|🙄\tface rolling eyes|🙅\tface no good gesture|🙆\tface ok gesture|🙇\tperson bowing deeply|🙈\tsee no evil monkey|🙉\thear no evil monkey|🙊\tspeak no evil monkey|🙋\thappy person raising one hand|🙌\tperson raising both hands in celebration|🙍\tperson frowning|🙎\tperson pouting face|🙏\tperson folded hands|💏\tkiss|💑\tcouple heart|🎅\tfather christmas|👀\teyes|👁️\teye|👂\tear|👃\tnose|👄\tmouth|👅\ttongue|👆\twhite up pointing backhand index|👇\twhite down pointing backhand index|👈\twhite left pointing backhand index|👉\twhite right pointing backhand index|👊\tfisted hand|👋\twaving hand|👌\tok hand|👍\tthumbs up|👎\tthumbs down|👏\tclapping hands|👐\topen hands|👤\tbust in silhouette|👥\tbusts in silhouette|👦\tboy|👧\tgirl|👨\tman|👩\twoman|👪\tfamily|👫\tman woman holding hands|👬\ttwo men holding hands|👭\ttwo women holding hands|👮\tpolice officer|👯\twoman bunny ears|👰\tbride veil|👱\tperson blond hair|👲\tman gua pi mao|👳\tman turban|👴\tolder man|👵\tolder woman|👶\tbaby child kid nursery|👷\tconstruction worker|👸\tprincess|👹\tjapanese ogre|👺\tjapanese goblin|👻\tghost|👼\tbaby angel|👽\textraterrestrial alien|👾\talien monster|👿\timp|💀\tskull|💁\tinformation desk person|💂\tguardsman|💃\tdancer|💄\tlipstick|💅\tnail polish|💆\tface massage|💇\thaircut|🕴️\tman in business suit levitating|🕵️\tsleuth or spy|🕺\tman dancing|🖐️\traised hand fingers splayed|🖕\treversed hand middle finger extended|🖖\traised hand part between middle ring|🗣️\tspeaking head in silhouette|🤌\tpinched fingers|🤏\tpinching hand|🤐\tzipper mouth face|🤑\tmoney mouth face|🤒\tface thermometer|🤓\tnerd face|🤔\tthinking face|🤕\tface head bandage|🤖\trobot face|🤗\thugging face|🤘\thorns|🤙\tcall me hand|🤚\traised back hand|🤛\tleft facing fist|🤜\tright facing fist|🤝\thandshake|🤞\thand index middle fingers crossed|🤟\ti love you hand|🤠\tface cowboy hat|🤡\tclown face|🤢\tnauseated face|🤣\trolling on floor laughing|🤤\tdrooling face|🤥\tlying face|🤦\tface palm|🤧\tsneezing face|🤨\tface one eyebrow raised|🤩\tgrinning face star eyes|🤪\tgrinning face one large small eye|🤫\tface finger covering closed lips|🤬\tserious face symbols covering mouth|🤭\tsmiling face eyes hand covering mouth|🤮\tface open mouth vomiting|🤯\tshocked face exploding head|🤰\tpregnant woman|🤱\tbreast feeding|🤲\tpalms up together|🤳\tselfie|🤴\tprince|🤵\tman in tuxedo|🤶\tmother christmas|🤷\tshrug|🤸\tperson doing cartwheel|🤹\tjuggling|🤺\tfencer|🥰\tsmiling face eyes three hearts|🥱\tyawning face|🥲\tsmiling face tear|🥳\tface party horn hat|🥴\tface uneven eyes wavy mouth|🥵\toverheated face|🥶\tfreezing face|🥷\tninja|🥸\tdisguised face|🥹\tface holding back tears|🥺\tface pleading eyes|🥻\tsari|🥼\tlab coat|🥽\tgoggles|🥾\thiking boot|🥿\tflat shoe|🦴\tbone|🦵\tleg|🦶\tfoot|🦷\ttooth|🦸\tsuperhero|🦹\tsupervillain|🦺\tsafety vest|🦻\tear hearing aid|🦼\tmotorized wheelchair|🦽\tmanual wheelchair|🦾\tmechanical arm|🦿\tmechanical leg|🧌\ttroll|🧍\tstanding person|🧎\tkneeling person|🧏\tdeaf person|🧐\tface monocle|🧑\tadult|🧒\tchild kid|🧓\tolder adult|🧔\tbearded person|🧕\tperson headscarf|🧖\tperson in steamy room|🧗\tperson climbing|🧘\tperson in lotus position yoga gym wellness|🧙\tmage|🧚\tfairy|🧛\tvampire|🧜\tmerperson|🧝\telf|🧞\tgenie|🧟\tzombie|🫀\tanatomical heart|🫁\tlungs|🫂\tpeople hugging|🫃\tpregnant man|🫄\tpregnant person|🫅\tperson crown|🫆\tfingerprint|🫰\thand index finger thumb crossed|🫱\trightwards hand|🫲\tleftwards hand|🫳\tpalm down hand|🫴\tpalm up hand|🫵\tindex pointing at viewer|🫶\theart hands|🫷\tleftwards pushing hand|🫸\trightwards pushing hand|☝️\twhite up pointing index|☠️\tskull crossbones|☹️\twhite frowning face|☺️\twhite smiling face|⛹️\tperson ball|✊\traised fist|✋\traised hand|✌️\tvictory hand|✍️\twriting hand",
+    "symbols": "✨\tsparkles|❤️\theavy black heart love|🧡\torange heart|💛\tyellow heart|💚\tgreen heart|💙\tblue heart|💜\tpurple heart|🤍\twhite heart|🩷\tpink heart|✅\twhite heavy check mark tick done yes paid|❌\tcross mark cancel no stop|⚠️\twarning alert overdue|⭐\twhite medium star favourite favorite|❓\tblack question mark ornament|❗\theavy exclamation mark|➕\theavy plus|➖\theavy minus|🇬🇧\tuk united kingdom gb pound|🇺🇸\tus usa america dollar|🇪🇺\teu europe euro|❤️‍🔥\theart fire passion|🏳️‍🌈\trainbow flag pride|💓\tbeating heart|💔\tbroken heart|💕\ttwo hearts|💖\tsparkling heart|💗\tgrowing heart|💘\theart arrow|💝\theart ribbon|💞\trevolving hearts|💟\theart decoration|🩵\tlight blue heart|🩶\tgrey heart|🤎\tbrown heart|‼️\tdouble exclamation mark|⁉️\texclamation question mark|ℹ️\tinformation source|↔️\tleft right arrow|↕️\tup down arrow|↖️\tnorth west arrow|↗️\tnorth east arrow|↘️\tsouth east arrow|↙️\tsouth west arrow|↩️\tleftwards arrow hook|↪️\trightwards arrow hook|⏏️\teject|⏩\tblack right pointing double triangle|⏪\tblack left pointing double triangle|⏫\tblack up pointing double triangle|⏬\tblack down pointing double triangle|⏭️\tblack right pointing double triangle vertical|⏮️\tblack left pointing double triangle vertical|⏯️\tblack right pointing triangle double vertical|⏸️\tdouble vertical bar|⏹️\tblack square stop|⏺️\tblack circle record|Ⓜ️\tcircled latin capital letter m|▪️\tblack small square|▫️\twhite small square|▶️\tblack right pointing triangle|◀️\tblack left pointing triangle|◻️\twhite medium square|◼️\tblack medium square|◽\twhite medium small square|◾\tblack medium small square|☑️\tballot box check|☢️\tradioactive|☣️\tbiohazard|☦️\torthodox cross|☪️\tstar crescent|☮️\tpeace|☯️\tyin yang|☸️\twheel dharma|♀️\tfemale|♂️\tmale|♈\taries|♉\ttaurus|♊\tgemini|♋\tcancer|♌\tleo|♍\tvirgo|♎\tlibra|♏\tscorpius|♐\tsagittarius|♑\tcapricorn|♒\taquarius|♓\tpisces|♨️\thot springs|♻️\tblack universal recycling|♾️\tpermanent paper|♿\twheelchair|⚕️\tstaff aesculapius|⚛️\tatom|⚜️\tfleur de lis|⚧️\tmale stroke female|⚪\tmedium white circle|⚫\tmedium black circle|⛎\tophiuchus|⛔\tno entry|⛩️\tshinto shrine|✔️\theavy check mark|✖️\theavy multiplication x|✝️\tlatin cross|✡️\tstar david|✳️\teight spoked asterisk|✴️\teight pointed black star|❇️\tsparkle|❎\tnegative squared cross mark|❔\twhite question mark ornament|❕\twhite exclamation mark ornament|❣️\theavy heart exclamation mark ornament|➗\theavy division|➡️\tblack rightwards arrow|➰\tcurly loop|➿\tdouble curly loop|⤴️\tarrow pointing rightwards then curving upwards|⤵️\tarrow pointing rightwards then curving downwards|⬅️\tleftwards black arrow|⬆️\tupwards black arrow|⬇️\tdownwards black arrow|⬛\tblack large square|⬜\twhite large square|⭕\theavy large circle|〰️\twavy dash|〽️\tpart alternation mark|㊗️\tcircled ideograph congratulation|㊙️\tcircled ideograph secret|🅰️\tnegative squared latin capital letter a|🅱️\tnegative squared latin capital letter b|🅾️\tnegative squared latin capital letter o|🅿️\tnegative squared latin capital letter p|🆎\tnegative squared ab|🆑\tsquared cl|🆒\tsquared cool|🆓\tsquared free|🆔\tsquared id|🆕\tsquared new|🆖\tsquared ng|🆗\tsquared ok|🆘\tsquared sos|🆙\tsquared up exclamation mark|🆚\tsquared vs|🈁\tsquared katakana koko|🈂️\tsquared katakana sa|🈚\tsquared cjk unified ideograph 7121|🈯\tsquared cjk unified ideograph 6307|🈲\tsquared cjk unified ideograph 7981|🈳\tsquared cjk unified ideograph 7a7a|🈴\tsquared cjk unified ideograph 5408|🈵\tsquared cjk unified ideograph 6e80|🈶\tsquared cjk unified ideograph 6709|🈷️\tsquared cjk unified ideograph 6708|🈸\tsquared cjk unified ideograph 7533|🈹\tsquared cjk unified ideograph 5272|🈺\tsquared cjk unified ideograph 55b6|🉐\tcircled ideograph advantage|🉑\tcircled ideograph accept|🏳️\twaving white flag|🏴\twaving black flag|🏸\tbadminton racquet shuttlecock|🏹\tbow arrow|🏺\tamphora|📿\tprayer beads|🔰\tjapanese beginner|🔱\ttrident emblem|🔲\tblack square|🔳\twhite square|🔴\tlarge red circle|🔵\tlarge blue circle|🔶\tlarge orange diamond|🔷\tlarge blue diamond|🔸\tsmall orange diamond|🔹\tsmall blue diamond|🔺\tup pointing red triangle|🔻\tdown pointing red triangle|🔼\tup pointing small red triangle|🔽\tdown pointing small red triangle|🕉️\tom|🕊️\tdove peace|🕋\tkaaba|🕌\tmosque|🕍\tsynagogue|🕎\tmenorah nine branches|🕐\tclock face one oclock|🕑\tclock face two oclock|🕒\tclock face three oclock|🕓\tclock face four oclock|🕔\tclock face five oclock|🕕\tclock face six oclock|🕖\tclock face seven oclock|🕗\tclock face eight oclock|🕘\tclock face nine oclock|🕙\tclock face ten oclock|🕚\tclock face eleven oclock|🕛\tclock face twelve oclock|🕜\tclock face one thirty|🕝\tclock face two thirty|🕞\tclock face three thirty|🕟\tclock face four thirty|🕠\tclock face five thirty|🕡\tclock face six thirty|🕢\tclock face seven thirty|🕣\tclock face eight thirty|🕤\tclock face nine thirty|🕥\tclock face ten thirty|🕦\tclock face eleven thirty|🕧\tclock face twelve thirty|🗡️\tdagger knife|🛜\twireless|🛝\tplayground slide|🛞\twheel|🛟\tring buoy|🟠\tlarge orange circle|🟡\tlarge yellow circle|🟢\tlarge green circle|🟣\tlarge purple circle|🟤\tlarge brown circle|🟥\tlarge red square|🟦\tlarge blue square|🟧\tlarge orange square|🟨\tlarge yellow square|🟩\tlarge green square|🟪\tlarge purple square|🟫\tlarge brown square|🟰\theavy equals|🫎\tmoose|🫏\tdonkey|🫠\tmelting face|🫡\tsaluting face|🫢\tface open eyes hand over mouth|🫣\tface peeking eye|🫤\tface diagonal mouth|🫥\tdotted line face|🫦\tbiting lip|🫧\tbubbles|🫨\tshaking face|🫩\tface bags under eyes|🇨🇦\tcanada cad|🇦🇺\taustralia aud|🇮🇪\tireland ie|🇫🇷\tfrance fr|🇩🇪\tgermany de|🇪🇸\tspain es|🇮🇹\titaly it|🇵🇹\tportugal pt|🇳🇱\tnetherlands nl|🇨🇭\tswitzerland ch|🇸🇪\tsweden se|🇳🇴\tnorway no|🇩🇰\tdenmark dk|🇵🇱\tpoland pl|🇯🇵\tjapan jp yen|1️⃣\tone number 1|2️⃣\ttwo number 2|3️⃣\tthree number 3|4️⃣\tfour number 4|5️⃣\tfive number 5|6️⃣\tsix number 6|7️⃣\tseven number 7|8️⃣\teight number 8|9️⃣\tnine number 9|0️⃣\tzero number 0"
   };
+
+  const EMOJI_CATALOG = [];
+  const EMOJIS_BY_CATEGORY = { all: EMOJI_CATALOG };
+  Object.entries(RAW_EMOJI_GROUPS).forEach(([cat, packed]) => {
+    const list = [];
+    packed.split('|').forEach((entry) => {
+      if (!entry) return;
+      const tabIdx = entry.indexOf('\t');
+      const emoji = tabIdx >= 0 ? entry.slice(0, tabIdx) : entry;
+      const keywords = tabIdx >= 0 ? entry.slice(tabIdx + 1) : '';
+      const item = { emoji, keywords: keywords.toLowerCase(), cat };
+      list.push(item);
+      EMOJI_CATALOG.push(item);
+    });
+    EMOJIS_BY_CATEGORY[cat] = list;
+  });
+
+  const emojiPickerState = {};
 
   function getEntryIcon(entry, overrideIcon = '') {
     const custom = (overrideIcon || entry?.icon || '').trim();
@@ -105,21 +139,103 @@
     return acc ? getSavingsAccountIcon(acc) : '🏦';
   }
 
-  function renderEmojiPicker(containerId, targetInputId, presets) {
+  function renderEmojiPicker(containerId, targetInputId, options = {}) {
     const container = document.getElementById(containerId);
     const input = document.getElementById(targetInputId);
     if (!container || !input) return;
+
+    const state = emojiPickerState[containerId] || { cat: 'all', query: '', targetInputId };
+    if (options.reset) {
+      state.cat = 'all';
+      state.query = '';
+    }
+    state.targetInputId = targetInputId;
+    emojiPickerState[containerId] = state;
+    container.dataset.targetInput = targetInputId;
+
+    if (container.dataset.pickerInit !== '1') {
+      container.innerHTML = `
+        <div class="emoji-picker-toolbar">
+          <input
+            type="search"
+            class="emoji-search-input"
+            data-emoji-search="${escapeHtml(containerId)}"
+            placeholder="Search ${EMOJI_CATALOG.length} emojis (e.g. rent, coffee, dog, car)..."
+            autocomplete="off"
+            spellcheck="false"
+            aria-label="Search emojis"
+          />
+          <span class="emoji-count-badge" data-emoji-count="${escapeHtml(containerId)}"></span>
+          <button
+            type="button"
+            class="icon-btn emoji-auto-btn hidden"
+            data-pick-emoji=""
+            data-picker-id="${escapeHtml(containerId)}"
+            title="Clear custom icon (use auto)"
+          >Auto</button>
+        </div>
+        <div class="emoji-cat-tabs" role="tablist" aria-label="Emoji categories">
+          ${EMOJI_CATEGORIES.map((c) => `
+            <button
+              type="button"
+              class="emoji-cat-btn"
+              data-emoji-cat="${escapeHtml(c.id)}"
+              data-picker-id="${escapeHtml(containerId)}"
+              title="${escapeHtml(c.label)}"
+            ><span aria-hidden="true">${escapeHtml(c.icon)}</span><span>${escapeHtml(c.label)}</span></button>
+          `).join('')}
+        </div>
+        <div class="emoji-grid-scroll" data-emoji-grid="${escapeHtml(containerId)}"></div>
+      `;
+      container.dataset.pickerInit = '1';
+    }
+
+    const searchInput = container.querySelector('[data-emoji-search]');
+    if (searchInput && document.activeElement !== searchInput && searchInput.value !== state.query) {
+      searchInput.value = state.query;
+    }
+
+    const autoBtn = container.querySelector('.emoji-auto-btn');
     const current = input.value.trim();
-    container.innerHTML = presets.map((emoji) => `
+    if (autoBtn) {
+      autoBtn.classList.toggle('hidden', !current);
+    }
+
+    container.querySelectorAll('[data-emoji-cat]').forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.emojiCat === state.cat);
+    });
+
+    const q = state.query.trim().toLowerCase();
+    let matches;
+    if (q) {
+      const terms = q.split(/\s+/).filter(Boolean);
+      matches = EMOJI_CATALOG.filter((item) =>
+        terms.every((t) => item.keywords.includes(t) || item.emoji === t)
+      );
+    } else {
+      matches = EMOJIS_BY_CATEGORY[state.cat] || EMOJI_CATALOG;
+    }
+
+    const countEl = container.querySelector('[data-emoji-count]');
+    if (countEl) {
+      countEl.textContent = `${matches.length} ${matches.length === 1 ? 'emoji' : 'emojis'}`;
+    }
+
+    const gridEl = container.querySelector('[data-emoji-grid]');
+    if (!gridEl) return;
+    if (matches.length === 0) {
+      gridEl.innerHTML = '<div class="emoji-empty-msg">No matching emojis — try words like money, house, coffee, dog, or car.</div>';
+      return;
+    }
+
+    gridEl.innerHTML = matches.map((item) => `
       <button
         type="button"
-        class="emoji-pick-btn ${current === emoji ? 'active' : ''}"
-        data-pick-emoji="${escapeHtml(emoji)}"
-        data-target-input="${escapeHtml(targetInputId)}"
-        data-picker-id="${escapeHtml(containerId)}"
-        title="Use ${escapeHtml(emoji)}"
-      >${escapeHtml(emoji)}</button>
-    `).join('') + (current ? `<button type="button" class="icon-btn" style="padding:2px 7px;font-size:0.7rem;" data-pick-emoji="" data-target-input="${escapeHtml(targetInputId)}" data-picker-id="${escapeHtml(containerId)}" title="Clear custom icon (use auto)">Auto</button>` : '');
+        class="emoji-pick-btn${current === item.emoji ? ' active' : ''}"
+        data-pick-emoji="${escapeHtml(item.emoji)}"
+        title="${escapeHtml(item.keywords || item.emoji)}"
+      >${escapeHtml(item.emoji)}</button>
+    `).join('');
   }
 
   // --- DATE & MONTH HELPERS ---
@@ -2182,11 +2298,7 @@
     if (iconInput) {
       iconInput.placeholder = runtime.entryModalKind === 'income' ? '💼' : '🧾';
     }
-    renderEmojiPicker(
-      'entryEmojiPicker',
-      'entryIconInput',
-      runtime.entryModalKind === 'income' ? EMOJI_PRESETS.income : EMOJI_PRESETS.outgoing
-    );
+    renderEmojiPicker('entryEmojiPicker', 'entryIconInput');
   }
 
   function openEntryModal({ entryId = null, defaultKind = 'outgoing', defaultFreq = 'monthly', defaultMemberId = null } = {}) {
@@ -2240,6 +2352,7 @@
     }
 
     syncEntryModalVisibility();
+    renderEmojiPicker('entryEmojiPicker', 'entryIconInput', { reset: true });
     openModal('entryModal');
     document.getElementById('entryTitleInput').focus();
   }
@@ -2382,7 +2495,7 @@
       document.getElementById('savAccWeightInput').value = '20';
       document.getElementById('savAccColorInput').value = '#10b981';
     }
-    renderEmojiPicker('savAccEmojiPicker', 'savAccIconInput', EMOJI_PRESETS.savingsAccount);
+    renderEmojiPicker('savAccEmojiPicker', 'savAccIconInput', { reset: true });
     openModal('savingsAccountModal');
     document.getElementById('savAccNameInput').focus();
   }
@@ -2496,7 +2609,7 @@
     }
 
     syncStxModalVisibility();
-    renderEmojiPicker('stxEmojiPicker', 'stxIconInput', EMOJI_PRESETS.savingsTx);
+    renderEmojiPicker('stxEmojiPicker', 'stxIconInput', { reset: true });
     openModal('savingsTxModal');
     document.getElementById('stxAmountInput').focus();
   }
@@ -2763,19 +2876,34 @@
         return;
       }
 
+      const emojiCatBtn = e.target.closest('[data-emoji-cat]');
+      if (emojiCatBtn) {
+        const pickerEl = emojiCatBtn.closest('.emoji-picker-strip');
+        const pickerId = emojiCatBtn.dataset.pickerId || pickerEl?.id;
+        const state = pickerId && emojiPickerState[pickerId];
+        const targetId = state?.targetInputId || pickerEl?.dataset.targetInput;
+        if (pickerId && targetId) {
+          emojiPickerState[pickerId] = {
+            cat: emojiCatBtn.dataset.emojiCat || 'all',
+            query: '',
+            targetInputId: targetId
+          };
+          const searchInp = pickerEl?.querySelector('[data-emoji-search]');
+          if (searchInp) searchInp.value = '';
+          renderEmojiPicker(pickerId, targetId);
+        }
+        return;
+      }
+
       const pickEmojiBtn = e.target.closest('[data-pick-emoji]');
       if (pickEmojiBtn) {
-        const targetId = pickEmojiBtn.dataset.targetInput;
-        const pickerId = pickEmojiBtn.dataset.pickerId;
-        const inp = document.getElementById(targetId);
+        const pickerEl = pickEmojiBtn.closest('.emoji-picker-strip');
+        const pickerId = pickEmojiBtn.dataset.pickerId || pickerEl?.id;
+        const targetId = pickEmojiBtn.dataset.targetInput || pickerEl?.dataset.targetInput || emojiPickerState[pickerId]?.targetInputId;
+        const inp = targetId ? document.getElementById(targetId) : null;
         if (inp) {
           inp.value = pickEmojiBtn.dataset.pickEmoji;
-          const presets = pickerId === 'entryEmojiPicker'
-            ? (runtime.entryModalKind === 'income' ? EMOJI_PRESETS.income : EMOJI_PRESETS.outgoing)
-            : pickerId === 'savAccEmojiPicker'
-              ? EMOJI_PRESETS.savingsAccount
-              : EMOJI_PRESETS.savingsTx;
-          renderEmojiPicker(pickerId, targetId, presets);
+          if (pickerId) renderEmojiPicker(pickerId, targetId);
         }
         return;
       }
@@ -3143,19 +3271,32 @@
       document.querySelector('.view-tab[data-tab="savings"]').click();
     });
 
-    // Entry modal segmented buttons & submit
+    // Entry modal icon inputs, live emoji search, segmented buttons & submit
+    document.body.addEventListener('input', (e) => {
+      const emojiSearch = e.target.closest('[data-emoji-search]');
+      if (!emojiSearch) return;
+      const pickerEl = emojiSearch.closest('.emoji-picker-strip');
+      const pickerId = emojiSearch.dataset.emojiSearch || pickerEl?.id;
+      const state = pickerId && emojiPickerState[pickerId];
+      const targetId = state?.targetInputId || pickerEl?.dataset.targetInput;
+      if (pickerId && targetId) {
+        emojiPickerState[pickerId] = {
+          cat: 'all',
+          query: emojiSearch.value,
+          targetInputId: targetId
+        };
+        renderEmojiPicker(pickerId, targetId);
+      }
+    });
+
     document.getElementById('entryIconInput').addEventListener('input', () => {
-      renderEmojiPicker(
-        'entryEmojiPicker',
-        'entryIconInput',
-        runtime.entryModalKind === 'income' ? EMOJI_PRESETS.income : EMOJI_PRESETS.outgoing
-      );
+      renderEmojiPicker('entryEmojiPicker', 'entryIconInput');
     });
     document.getElementById('savAccIconInput').addEventListener('input', () => {
-      renderEmojiPicker('savAccEmojiPicker', 'savAccIconInput', EMOJI_PRESETS.savingsAccount);
+      renderEmojiPicker('savAccEmojiPicker', 'savAccIconInput');
     });
     document.getElementById('stxIconInput').addEventListener('input', () => {
-      renderEmojiPicker('stxEmojiPicker', 'stxIconInput', EMOJI_PRESETS.savingsTx);
+      renderEmojiPicker('stxEmojiPicker', 'stxIconInput');
     });
 
     document.querySelectorAll('[data-entry-kind]').forEach((btn) => {

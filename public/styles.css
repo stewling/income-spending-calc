@@ -2281,24 +2281,94 @@ input[type="color"]::-moz-color-swatch {
 
 .emoji-picker-strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  padding: 7px 9px;
+  flex-direction: column;
+  gap: 7px;
+  padding: 8px 9px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+}
+
+.emoji-picker-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.emoji-search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 9px !important;
+  font-size: 0.78rem !important;
+  border-radius: 6px;
+}
+
+.emoji-count-badge {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.emoji-auto-btn {
+  padding: 3px 8px !important;
+  font-size: 0.72rem !important;
+  flex-shrink: 0;
+}
+
+.emoji-cat-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.emoji-cat-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card-soft);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+
+.emoji-cat-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-main);
+}
+
+.emoji-cat-btn.active {
+  border-color: var(--savings);
+  background: var(--savings-soft);
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.emoji-grid-scroll {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+  gap: 4px;
+  max-height: 148px;
+  overflow-y: auto;
+  padding: 2px;
+  scrollbar-width: thin;
 }
 
 .emoji-pick-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 28px;
+  width: 100%;
+  height: 30px;
   border-radius: 6px;
   border: 1px solid transparent;
   background: var(--bg-card-soft);
-  font-size: 1rem;
+  font-size: 1.05rem;
   line-height: 1;
   cursor: pointer;
   transition: transform 0.1s, border-color 0.12s, background-color 0.12s;
@@ -2312,6 +2382,14 @@ input[type="color"]::-moz-color-swatch {
 .emoji-pick-btn.active {
   border-color: var(--savings);
   background: var(--savings-soft);
+}
+
+.emoji-empty-msg {
+  grid-column: 1 / -1;
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 0.76rem;
+  color: var(--text-muted);
 }
 
 @media (max-width: 1120px) {
