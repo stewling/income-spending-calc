@@ -74,6 +74,20 @@ Switch instantly via the header dropdown or open the visual **Choose Site Theme*
 
 ![Color Themes Gallery](docs/screenshots/11-color-themes-gallery.png)
 
+#### Live Theme Previews
+
+**Light Daylight**
+![Light Daylight Theme](docs/screenshots/12-theme-light-daylight.png)
+
+**Dark OLED (Pitch Black)**
+![Dark OLED Theme](docs/screenshots/13-theme-dark-oled.png)
+
+**Dracula**
+![Dracula Theme](docs/screenshots/14-theme-dracula.png)
+
+**Synthwave Neon**
+![Synthwave Neon Theme](docs/screenshots/15-theme-synthwave-neon.png)
+
 ---
 
 ## Complete Feature List
