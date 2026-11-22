@@ -2,9 +2,22 @@
   'use strict';
 
   const LS_KEY = 'hb_state_cache_v1';
+  const THEME_LS_KEY = 'hb_theme_v1';
   const IDB_NAME = 'HouseholdBudgetLocalDB';
   const IDB_STORE = 'stateCache';
   const CLIENT_ID = `client_${Math.random().toString(36).slice(2, 10)}`;
+  const THEMES = [
+    { id: 'dark', name: 'Dark (Midnight)', group: 'Default Slate Dark', bg: '#0b1120', card: '#162033', text: '#f1f5f9', accent: '#38bdf8', income: '#10b981', outgoing: '#f43f5e' },
+    { id: 'oled', name: 'Dark OLED', group: 'Pure Pitch Black', bg: '#000000', card: '#0c0e14', text: '#f8fafc', accent: '#00e5ff', income: '#00e676', outgoing: '#ff4081' },
+    { id: 'light', name: 'Light Daylight', group: 'Crisp High Contrast', bg: '#f1f5f9', card: '#ffffff', text: '#0f172a', accent: '#0284c7', income: '#059669', outgoing: '#e11d48' },
+    { id: 'dracula', name: 'Dracula', group: 'Vampire Violet & Pink', bg: '#1e1f29', card: '#313444', text: '#f8f8f2', accent: '#bd93f9', income: '#50fa7b', outgoing: '#ff5555' },
+    { id: 'emerald', name: 'Emerald Forest', group: 'Deep Pine & Jade', bg: '#04130e', card: '#0d291e', text: '#ecfdf5', accent: '#2dd4bf', income: '#34d399', outgoing: '#fb7185' },
+    { id: 'cyberpunk', name: 'Synthwave Neon', group: 'Violet, Cyan & Magenta', bg: '#0c0418', card: '#1d0d36', text: '#faf5ff', accent: '#00f0ff', income: '#00ff9d', outgoing: '#ff2a85' },
+    { id: 'nord', name: 'Nordic Frost', group: 'Arctic Slate & Ice Blue', bg: '#242933', card: '#3b4252', text: '#eceff4', accent: '#88c0d0', income: '#a3be8c', outgoing: '#bf616a' },
+    { id: 'sunset', name: 'Sunset Amber', group: 'Espresso & Warm Gold', bg: '#160d0a', card: '#2c1b15', text: '#fef3c7', accent: '#fb923c', income: '#34d399', outgoing: '#f43f5e' },
+    { id: 'ocean', name: 'Deep Ocean', group: 'Abyssal Navy & Aqua', bg: '#031521', card: '#0b2d44', text: '#f0f9ff', accent: '#38bdf8', income: '#2dd4bf', outgoing: '#fb7185' },
+    { id: 'rose', name: 'Rosé Pine', group: 'Plum, Rose & Champagne', bg: '#191724', card: '#26233a', text: '#e0def4', accent: '#c4a7e7', income: '#9ccfd8', outgoing: '#eb6f92' }
+  ];
   const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   const CURRENCY_LOCALES = {
     GBP: { locale: 'en-GB', symbol: '£' },
@@ -206,8 +219,12 @@
         currency: 'GBP',
         weeklyCalcMode: 'exact',
         safetyBuffer: 250,
-        householdName: 'Household Finance Hub'
+        householdName: 'Household Finance Hub',
+        theme: 'dark'
       };
+    }
+    if (!base.settings.theme || !THEMES.some((t) => t.id === base.settings.theme)) {
+      base.settings.theme = 'dark';
     }
     if (!Array.isArray(base.members) || base.members.length === 0) {
       base.members = DEFAULT_MEMBERS.map((m) => ({ ...m }));
@@ -780,6 +797,67 @@
     }
   }
 
+  // --- THEME ENGINE ---
+  function getActiveThemeId() {
+    const raw = document.documentElement.getAttribute('data-theme') || runtime.state?.settings?.theme || 'dark';
+    return THEMES.some((t) => t.id === raw) ? raw : 'dark';
+  }
+
+  function renderThemeGallery() {
+    const grid = document.getElementById('themeGalleryGrid');
+    if (!grid) return;
+    const activeId = getActiveThemeId();
+    grid.innerHTML = THEMES.map((t) => {
+      const isActive = t.id === activeId;
+      return `
+        <button type="button" class="theme-swatch-card ${isActive ? 'active' : ''}" data-select-theme="${escapeHtml(t.id)}">
+          <div class="theme-preview-bar" style="background:${escapeHtml(t.bg)}">
+            <div class="theme-preview-card" style="background:${escapeHtml(t.card)};color:${escapeHtml(t.text)}">
+              <span>£2,535</span>
+              <div class="theme-swatch-dots">
+                <span class="theme-swatch-dot" style="background:${escapeHtml(t.income)}"></span>
+                <span class="theme-swatch-dot" style="background:${escapeHtml(t.outgoing)}"></span>
+                <span class="theme-swatch-dot" style="background:${escapeHtml(t.accent)}"></span>
+              </div>
+            </div>
+          </div>
+          <div class="theme-card-meta">
+            <div>
+              <div class="theme-card-title">${escapeHtml(t.name)}</div>
+              <div class="theme-card-sub">${escapeHtml(t.group)}</div>
+            </div>
+            ${isActive ? '<span class="badge badge-one-off">Active</span>' : ''}
+          </div>
+        </button>
+      `;
+    }).join('');
+  }
+
+  function applyTheme(themeId, { persist = false, toast = false } = {}) {
+    const themeMeta = THEMES.find((t) => t.id === themeId) || THEMES[0];
+    document.documentElement.setAttribute('data-theme', themeMeta.id);
+
+    const metaThemeEl = document.querySelector('meta[name="theme-color"]');
+    if (metaThemeEl) metaThemeEl.setAttribute('content', themeMeta.bg);
+
+    const sel = document.getElementById('themeSelect');
+    if (sel && sel.value !== themeMeta.id) sel.value = themeMeta.id;
+
+    try {
+      localStorage.setItem(THEME_LS_KEY, themeMeta.id);
+    } catch {
+      // ignore storage errors
+    }
+
+    renderThemeGallery();
+
+    if (persist && runtime.state) {
+      runtime.state = ensureValidClientState(runtime.state);
+      runtime.state.settings.theme = themeMeta.id;
+      persistChange(toast ? `Theme changed to ${themeMeta.name}` : null);
+    }
+  }
+
   // --- RENDERING ---
   function renderTopControls() {
     const state = runtime.state;
@@ -787,6 +865,7 @@
     document.getElementById('currencySelect').value = state.settings?.currency || 'GBP';
     document.getElementById('weeklyModeSelect').value = state.settings?.weeklyCalcMode || 'exact';
     document.getElementById('monthPickerInput').value = runtime.selectedMonth;
+    applyTheme(state.settings?.theme || localStorage.getItem(THEME_LS_KEY) || 'dark');
     populateMemberSelects();
   }
 
@@ -1019,7 +1098,7 @@
 
       let statusPill = '';
       if (b.billsShortfall > 0) {
-        statusPill = `<span class="status-toggle pending" style="background:var(--outgoing-soft);color:#fda4af;border-color:rgba(244,63,94,0.45);cursor:default;">Needs ${escapeHtml(formatMoney(b.billsShortfall))} for bills</span>`;
+        statusPill = `<span class="status-toggle pending" style="background:var(--outgoing-soft);color:var(--outgoing-text);border-color:var(--outgoing);cursor:default;">Needs ${escapeHtml(formatMoney(b.billsShortfall))} for bills</span>`;
       } else if (b.totalShortfall > 0) {
         statusPill = `<span class="status-toggle pending" style="cursor:default;">Bills covered • Needs ${escapeHtml(formatMoney(b.totalShortfall))} for savings</span>`;
       } else {
@@ -2438,6 +2517,15 @@
       persistChange('Currency updated');
     });
 
+    document.getElementById('themeSelect').addEventListener('change', (e) => {
+      applyTheme(e.target.value, { persist: true, toast: true });
+    });
+
+    document.getElementById('btnOpenThemeModal').addEventListener('click', () => {
+      renderThemeGallery();
+      openModal('themeModal');
+    });
+
     document.getElementById('weeklyModeSelect').addEventListener('change', (e) => {
       runtime.state.settings.weeklyCalcMode = e.target.value;
       runtime.plannedAllocations = {};
@@ -2550,6 +2638,12 @@
       const closeBtn = e.target.closest('[data-close-modal]');
       if (closeBtn) {
         closeModal(closeBtn.dataset.closeModal);
+        return;
+      }
+
+      const selectThemeBtn = e.target.closest('[data-select-theme]');
+      if (selectThemeBtn) {
+        applyTheme(selectThemeBtn.dataset.selectTheme, { persist: true, toast: true });
         return;
       }
 
@@ -3588,6 +3682,7 @@
 
   // --- BOOTSTRAP ---
   async function init() {
+    applyTheme(localStorage.getItem(THEME_LS_KEY) || 'dark');
     bindEvents();
 
     if ('serviceWorker' in navigator) {

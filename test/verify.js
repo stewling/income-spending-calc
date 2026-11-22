@@ -96,8 +96,9 @@ async function runTests() {
     assert.equal(legacyNormalized.savingsTransactions[0].memberId, 'mem_joint');
     console.log('PASS: normalizeState upgrades legacy records with default memberId, memberTransfers, and one-off frequency');
 
-    // 4. PUT /api/state persists custom member, renamed existing members, entries with memberId, recurring savings/asset payments, and asset allocation
+    // 4. PUT /api/state persists custom member, theme setting, renamed existing members, entries with memberId, recurring savings/asset payments, and asset allocation
     const modifiedState = structuredClone(stateJson.state);
+    modifiedState.settings.theme = 'dracula';
     const mineMember = modifiedState.members.find((m) => m.id === 'mem_mine');
     const partnerMember = modifiedState.members.find((m) => m.id === 'mem_partner');
     const jointMember = modifiedState.members.find((m) => m.id === 'mem_joint');
@@ -224,6 +225,7 @@ async function runTests() {
     const reloadedRes = await fetch(`${baseUrl}/api/state`);
     const reloadedJson = await reloadedRes.json();
     assert.equal(reloadedJson.revision, 2);
+    assert.equal(reloadedJson.state.settings.theme, 'dracula');
     assert.equal(reloadedJson.state.members.find((m) => m.id === 'mem_joint')?.name, 'Family Joint Bills');
     assert.equal(reloadedJson.state.members.find((m) => m.id === 'mem_mine')?.name, 'Sam Personal');
     assert.equal(reloadedJson.state.members.find((m) => m.id === 'mem_partner')?.name, 'Jordan Personal');

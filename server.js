@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
-const { DEFAULT_MEMBERS, createSeedState, createEmptyState, getCurrentMonth } = require('./seed-data');
+const { VALID_THEMES, DEFAULT_MEMBERS, createSeedState, createEmptyState, getCurrentMonth } = require('./seed-data');
 
 const DEFAULT_PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
@@ -107,7 +107,8 @@ function normalizeState(raw) {
         : base.settings.safetyBuffer,
       householdName: typeof settings.householdName === 'string' && settings.householdName.trim()
         ? settings.householdName.trim().slice(0, 80)
-        : base.settings.householdName
+        : base.settings.householdName,
+      theme: VALID_THEMES.includes(settings.theme) ? settings.theme : base.settings.theme
     },
     members,
     memberTransfers,

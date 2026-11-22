@@ -11,6 +11,7 @@ A **local-first, self-hosted rolling monthly income, outgoings, direct debits, a
 - **Multi-Device LAN & Remote Sync:** Real-time Server-Sent Events (`GET /api/events`) keep every connected browser tab and mobile device synchronized automatically.
 - **Joint & Personal Account Bill Coverage & Allocations:** Allocate money from personal accounts (`My Account`, `Partner Account`, etc.) into the `Joint Account` via monthly, weekly, or one-off transfers, and see exact bill coverage, shortfalls, and surpluses for both personal and joint accounts.
 - **Site-Wide Household Member / Payer Account Labeling & Renaming:** Set up, color-code, and rename personal and joint accounts at any time, label every income, bill, savings pot, and asset with who pays or owns it, and filter any view by account.
+- **10 On-the-Fly Color Themes:** Switch seamlessly without reloading between `Dark (Midnight)`, `Dark OLED`, `Light Daylight`, `Dracula`, `Emerald Forest`, `Synthwave Neon`, `Nordic Frost`, `Sunset Amber`, `Deep Ocean`, and `Rosé Pine`.
 - **Rolling Monthly Engine:** Seamlessly browse past saved months, the current month, and future scheduled months side-by-side—with weekly direct debits, monthly direct debits, one-off payments, and recurring/one-off savings & asset tracking.
 - **Zero-Dependency Docker Image:** Runs cleanly on `node:24-alpine` exposed on port `5025` with persistent `/app/data` volume storage.
 
@@ -67,6 +68,11 @@ Compare 12 past, current, and upcoming months side-by-side in an interactive bar
 Copy direct LAN/remote URLs for phones and tablets, inspect SQLite/JSON/browser cache sync status, export or restore JSON backups, and reload sample data or start blank.
 
 ![Local Network Access and Cache Modal](docs/screenshots/06-lan-access-and-cache.png)
+
+### 11. On-the-Fly Color Themes & Swatch Gallery
+Switch instantly via the header dropdown or open the visual **Choose Site Theme** gallery to preview and apply **Dark (Midnight)**, **Dark OLED**, **Light Daylight**, **Dracula**, **Emerald Forest**, **Synthwave Neon**, **Nordic Frost**, **Sunset Amber**, **Deep Ocean**, or **Rosé Pine**.
+
+![Color Themes Gallery](docs/screenshots/11-color-themes-gallery.png)
 
 ---
 
@@ -131,6 +137,10 @@ Copy direct LAN/remote URLs for phones and tablets, inspect SQLite/JSON/browser 
 - **Offline Edit Queue:** Changes made while offline are saved immediately in the browser and automatically pushed to the server when connectivity returns.
 - **Real-Time Multi-Device Sync:** Server-Sent Events (`GET /api/events`) push updates across all open tabs and LAN devices whenever any user makes a change.
 - **Backup & Restore:** Download full JSON backups (`GET /api/export`), import/restore backups from disk, reload seeded sample data, or clear everything to start blank.
+
+### 7. Multi-Theme Interface (10 Switchable Themes)
+- **Live Theme Switching:** Change themes on the fly via the top-bar selector (`#themeSelect`) or the interactive visual swatch modal (`Themes`), persisted immediately in `localStorage` (`hb_theme_v1`) and synced in SQLite (`settings.theme`).
+- **Included Palettes:** `Dark (Midnight)`, `Dark OLED` (pure black `#000`), `Light Daylight`, `Dracula`, `Emerald Forest`, `Synthwave Neon`, `Nordic Frost`, `Sunset Amber`, `Deep Ocean`, and `Rosé Pine`.
 
 ---
 

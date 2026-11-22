@@ -8,6 +8,12 @@
   <link rel="icon" type="image/svg+xml" href="/icon.svg" />
   <link rel="manifest" href="/manifest.json" />
   <link rel="stylesheet" href="/styles.css" />
+  <script>
+    try {
+      var savedTheme = localStorage.getItem('hb_theme_v1');
+      if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    } catch (_) {}
+  </script>
 </head>
 <body>
   <div class="app-shell">
@@ -42,6 +48,23 @@
           <option value="USD">$ USD</option>
           <option value="EUR">€ EUR</option>
         </select>
+
+        <select id="themeSelect" class="select-compact" aria-label="Color theme" title="Switch site theme on the fly">
+          <option value="dark">🌙 Dark (Midnight)</option>
+          <option value="oled">🖤 Dark OLED</option>
+          <option value="light">☀️ Light</option>
+          <option value="dracula">🧛 Dracula</option>
+          <option value="emerald">🌲 Emerald Forest</option>
+          <option value="cyberpunk">⚡ Synthwave Neon</option>
+          <option value="nord">❄️ Nordic Frost</option>
+          <option value="sunset">🌅 Sunset Amber</option>
+          <option value="ocean">🌊 Deep Ocean</option>
+          <option value="rose">🌸 Rosé Pine</option>
+        </select>
+
+        <button type="button" id="btnOpenThemeModal" class="btn btn-ghost btn-sm" title="Browse &amp; preview color themes">
+          Themes
+        </button>
 
         <button type="button" id="btnManageMembers" class="btn btn-ghost btn-sm" title="Manage household members and payer accounts">
           Members &amp; Accounts
@@ -1126,6 +1149,23 @@
             <button type="button" id="btnResetSampleData" class="btn btn-ghost btn-sm">Load Sample Data</button>
             <button type="button" id="btnResetEmptyData" class="btn btn-danger btn-sm">Clear All (Start Blank)</button>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CHOOSE COLOR THEME -->
+  <div id="themeModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="themeModalTitle">Choose Site Theme</h2>
+        <button type="button" class="modal-close" data-close-modal="themeModal" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="panel-subtitle">Switch themes on the fly — your choice applies immediately across all screens and syncs across your household.</p>
+        <div id="themeGalleryGrid" class="theme-gallery-grid"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary btn-sm" data-close-modal="themeModal">Done</button>
         </div>
       </div>
     </div>

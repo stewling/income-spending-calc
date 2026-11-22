@@ -14,6 +14,19 @@ function shiftMonth(monthStr, offset) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 }
 
+const VALID_THEMES = [
+  'dark',
+  'oled',
+  'light',
+  'dracula',
+  'emerald',
+  'cyberpunk',
+  'nord',
+  'sunset',
+  'ocean',
+  'rose'
+];
+
 const DEFAULT_MEMBERS = [
   { id: 'mem_joint', name: 'Joint Account', role: 'joint', color: '#38bdf8' },
   { id: 'mem_mine', name: 'My Account', role: 'personal', color: '#10b981' },
@@ -27,7 +40,8 @@ function createEmptyState() {
       currency: 'GBP',
       weeklyCalcMode: 'exact',
       safetyBuffer: 250,
-      householdName: 'Household Finance Hub'
+      householdName: 'Household Finance Hub',
+      theme: 'dark'
     },
     members: DEFAULT_MEMBERS.map((m) => ({ ...m })),
     memberTransfers: [],
@@ -893,7 +907,8 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       currency: 'GBP',
       weeklyCalcMode: 'exact',
       safetyBuffer: 250,
-      householdName: 'Household Finance Hub'
+      householdName: 'Household Finance Hub',
+      theme: 'dark'
     },
     members,
     memberTransfers,
@@ -905,6 +920,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
 }
 
 module.exports = {
+  VALID_THEMES,
   DEFAULT_MEMBERS,
   createSeedState,
   createEmptyState,
