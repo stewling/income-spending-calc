@@ -148,6 +148,7 @@
     if (options.reset) {
       state.cat = 'all';
       state.query = '';
+      container.classList.add('hidden');
     }
     state.targetInputId = targetInputId;
     emojiPickerState[containerId] = state;
@@ -173,6 +174,13 @@
             data-picker-id="${escapeHtml(containerId)}"
             title="Clear custom icon (use auto)"
           >Auto</button>
+          <button
+            type="button"
+            class="icon-btn emoji-close-btn"
+            data-close-emoji-picker="${escapeHtml(containerId)}"
+            title="Close emoji menu"
+            aria-label="Close emoji menu"
+          >&times;</button>
         </div>
         <div class="emoji-cat-tabs" role="tablist" aria-label="Emoji categories">
           ${EMOJI_CATEGORIES.map((c) => `
@@ -2864,6 +2872,10 @@
 
     // Delegated month select & entry actions
     document.body.addEventListener('click', (e) => {
+      if (!e.target.closest('.emoji-picker-strip, [data-toggle-emoji-picker]')) {
+        document.querySelectorAll('.emoji-picker-strip:not(.hidden)').forEach((el) => el.classList.add('hidden'));
+      }
+
       const closeBtn = e.target.closest('[data-close-modal]');
       if (closeBtn) {
         closeModal(closeBtn.dataset.closeModal);
@@ -2873,6 +2885,33 @@
       const selectThemeBtn = e.target.closest('[data-select-theme]');
       if (selectThemeBtn) {
         applyTheme(selectThemeBtn.dataset.selectTheme, { persist: true, toast: true });
+        return;
+      }
+
+      const closeEmojiBtn = e.target.closest('[data-close-emoji-picker]');
+      if (closeEmojiBtn) {
+        const pickerEl = document.getElementById(closeEmojiBtn.dataset.closeEmojiPicker);
+        if (pickerEl) pickerEl.classList.add('hidden');
+        return;
+      }
+
+      const toggleEmojiBtn = e.target.closest('[data-toggle-emoji-picker]');
+      if (toggleEmojiBtn) {
+        const pickerId = toggleEmojiBtn.dataset.toggleEmojiPicker;
+        const pickerEl = pickerId ? document.getElementById(pickerId) : null;
+        if (pickerEl) {
+          const wasHidden = pickerEl.classList.contains('hidden');
+          document.querySelectorAll('.emoji-picker-strip:not(.hidden)').forEach((el) => {
+            if (el !== pickerEl) el.classList.add('hidden');
+          });
+          if (wasHidden) {
+            const targetId = pickerEl.dataset.targetInput || emojiPickerState[pickerId]?.targetInputId || toggleEmojiBtn.querySelector('input')?.id;
+            pickerEl.classList.remove('hidden');
+            if (targetId) renderEmojiPicker(pickerId, targetId);
+          } else {
+            pickerEl.classList.add('hidden');
+          }
+        }
         return;
       }
 
@@ -2905,6 +2944,7 @@
           inp.value = pickEmojiBtn.dataset.pickEmoji;
           if (pickerId) renderEmojiPicker(pickerId, targetId);
         }
+        if (pickerEl) pickerEl.classList.add('hidden');
         return;
       }
 

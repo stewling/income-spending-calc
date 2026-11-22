@@ -1,4 +1,4 @@
-const CACHE_NAME = 'household-finance-shell-v7';
+const CACHE_NAME = 'household-finance-shell-v9';
 const APP_SHELL_ASSETS = [
   '/',
   '/index.html',

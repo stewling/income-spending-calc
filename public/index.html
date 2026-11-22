@@ -562,21 +562,26 @@
           </div>
         </div>
 
-        <div class="form-grid-icon">
-          <div class="field-group">
-            <label for="entryIconInput">Icon / Emoji</label>
-            <input type="text" id="entryIconInput" class="input-icon" maxlength="12" placeholder="🧾" aria-label="Item icon or emoji" />
+        <div class="icon-picker-row">
+          <div class="form-grid-icon">
+            <div class="field-group">
+              <label for="entryIconInput">Icon / Emoji</label>
+              <div class="icon-trigger-wrap" data-toggle-emoji-picker="entryEmojiPicker">
+                <input type="text" id="entryIconInput" class="input-icon" maxlength="12" placeholder="🧾" aria-label="Item icon or emoji" aria-haspopup="true" />
+                <span class="icon-trigger-caret" aria-hidden="true">▾</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="entryTitleInput">Name / Description *</label>
+              <input type="text" id="entryTitleInput" required placeholder="e.g. Council Tax, Weekly Shop, Car Service" />
+            </div>
+            <div class="field-group">
+              <label for="entryAmountInput">Amount *</label>
+              <input type="number" id="entryAmountInput" required min="0.01" step="0.01" placeholder="0.00" />
+            </div>
           </div>
-          <div class="field-group">
-            <label for="entryTitleInput">Name / Description *</label>
-            <input type="text" id="entryTitleInput" required placeholder="e.g. Council Tax, Weekly Shop, Car Service" />
-          </div>
-          <div class="field-group">
-            <label for="entryAmountInput">Amount *</label>
-            <input type="number" id="entryAmountInput" required min="0.01" step="0.01" placeholder="0.00" />
-          </div>
+          <div id="entryEmojiPicker" class="emoji-picker-strip hidden" aria-label="Quick emoji picker"></div>
         </div>
-        <div id="entryEmojiPicker" class="emoji-picker-strip" aria-label="Quick emoji picker"></div>
 
         <div class="form-grid-3">
           <div class="field-group">
@@ -731,27 +736,32 @@
       </div>
       <form id="savingsAccountForm" class="modal-body">
         <input type="hidden" id="savAccIdInput" />
-        <div class="form-grid-icon">
-          <div class="field-group">
-            <label for="savAccIconInput">Icon / Emoji</label>
-            <input type="text" id="savAccIconInput" class="input-icon" maxlength="12" placeholder="🏦" aria-label="Account or asset icon" />
+        <div class="icon-picker-row">
+          <div class="form-grid-icon">
+            <div class="field-group">
+              <label for="savAccIconInput">Icon / Emoji</label>
+              <div class="icon-trigger-wrap" data-toggle-emoji-picker="savAccEmojiPicker">
+                <input type="text" id="savAccIconInput" class="input-icon" maxlength="12" placeholder="🏦" aria-label="Account or asset icon" aria-haspopup="true" />
+                <span class="icon-trigger-caret" aria-hidden="true">▾</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="savAccNameInput">Account / Asset Name *</label>
+              <input type="text" id="savAccNameInput" required placeholder="e.g. Emergency Fund, House Equity, Cash ISA" />
+            </div>
+            <div class="field-group">
+              <label for="savAccTypeInput">Type</label>
+              <select id="savAccTypeInput">
+                <option value="savings">Savings Account</option>
+                <option value="isa">ISA / Tax-Free Savings</option>
+                <option value="investment">Investment / Shares</option>
+                <option value="cash">Cash / Sinking Pot</option>
+                <option value="asset">Physical Asset / Property</option>
+              </select>
+            </div>
           </div>
-          <div class="field-group">
-            <label for="savAccNameInput">Account / Asset Name *</label>
-            <input type="text" id="savAccNameInput" required placeholder="e.g. Emergency Fund, House Equity, Cash ISA" />
-          </div>
-          <div class="field-group">
-            <label for="savAccTypeInput">Type</label>
-            <select id="savAccTypeInput">
-              <option value="savings">Savings Account</option>
-              <option value="isa">ISA / Tax-Free Savings</option>
-              <option value="investment">Investment / Shares</option>
-              <option value="cash">Cash / Sinking Pot</option>
-              <option value="asset">Physical Asset / Property</option>
-            </select>
-          </div>
+          <div id="savAccEmojiPicker" class="emoji-picker-strip hidden" aria-label="Quick emoji picker"></div>
         </div>
-        <div id="savAccEmojiPicker" class="emoji-picker-strip" aria-label="Quick emoji picker"></div>
 
         <div class="form-grid-2">
           <div class="field-group">
@@ -779,8 +789,8 @@
           </div>
         </div>
 
-        <div class="form-grid-2">
-          <div class="field-group">
+        <div class="form-grid-color-notes">
+          <div class="field-group field-group-color">
             <label for="savAccColorInput">Accent Color</label>
             <input type="color" id="savAccColorInput" value="#10b981" class="input-color" />
           </div>
@@ -844,32 +854,37 @@
           </div>
         </div>
 
-        <div class="form-grid-icon">
-          <div class="field-group">
-            <label for="stxIconInput">Icon / Emoji</label>
-            <input type="text" id="stxIconInput" class="input-icon" maxlength="12" placeholder="🪙" aria-label="Payment icon or emoji" />
+        <div class="icon-picker-row">
+          <div class="form-grid-icon">
+            <div class="field-group">
+              <label for="stxIconInput">Icon / Emoji</label>
+              <div class="icon-trigger-wrap" data-toggle-emoji-picker="stxEmojiPicker">
+                <input type="text" id="stxIconInput" class="input-icon" maxlength="12" placeholder="🪙" aria-label="Payment icon or emoji" aria-haspopup="true" />
+                <span class="icon-trigger-caret" aria-hidden="true">▾</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label for="stxAmountInput" id="stxAmountLabel">Amount *</label>
+              <input type="number" id="stxAmountInput" required step="0.01" placeholder="0.00" />
+            </div>
+            <div class="field-group">
+              <label for="stxCategoryInput">Category</label>
+              <input type="text" id="stxCategoryInput" list="stxCategories" value="Deposit" />
+              <datalist id="stxCategories">
+                <option value="Deposit"></option>
+                <option value="Monthly Allocation"></option>
+                <option value="Monthly Standing Order"></option>
+                <option value="Weekly Savings Rule"></option>
+                <option value="Asset Contribution"></option>
+                <option value="Withdrawal"></option>
+                <option value="Emergency Spend"></option>
+                <option value="Interest / Dividend"></option>
+                <option value="Valuation Update"></option>
+              </datalist>
+            </div>
           </div>
-          <div class="field-group">
-            <label for="stxAmountInput" id="stxAmountLabel">Amount *</label>
-            <input type="number" id="stxAmountInput" required step="0.01" placeholder="0.00" />
-          </div>
-          <div class="field-group">
-            <label for="stxCategoryInput">Category</label>
-            <input type="text" id="stxCategoryInput" list="stxCategories" value="Deposit" />
-            <datalist id="stxCategories">
-              <option value="Deposit"></option>
-              <option value="Monthly Allocation"></option>
-              <option value="Monthly Standing Order"></option>
-              <option value="Weekly Savings Rule"></option>
-              <option value="Asset Contribution"></option>
-              <option value="Withdrawal"></option>
-              <option value="Emergency Spend"></option>
-              <option value="Interest / Dividend"></option>
-              <option value="Valuation Update"></option>
-            </datalist>
-          </div>
+          <div id="stxEmojiPicker" class="emoji-picker-strip hidden" aria-label="Quick emoji picker"></div>
         </div>
-        <div id="stxEmojiPicker" class="emoji-picker-strip" aria-label="Quick emoji picker"></div>
 
         <!-- CONDITIONAL SCHEDULE FIELDS FOR SAVINGS/ASSET -->
         <div id="stxOneOffFields" class="schedule-box">
@@ -964,7 +979,7 @@
 
         <form id="addMemberForm" class="schedule-box">
           <label class="field-label-small" style="display:block;margin-bottom:8px;">Add New Member / Payer Account</label>
-          <div class="form-grid-3">
+          <div class="form-grid-member-add">
             <div class="field-group">
               <label for="newMemberNameInput">Account / Member Name *</label>
               <input type="text" id="newMemberNameInput" required placeholder="e.g. Alex Card, Joint Bills" />
@@ -976,7 +991,7 @@
                 <option value="joint">Joint Account</option>
               </select>
             </div>
-            <div class="field-group">
+            <div class="field-group field-group-color">
               <label for="newMemberColorInput">Label Color</label>
               <input type="color" id="newMemberColorInput" value="#f59e0b" class="input-color" />
             </div>
