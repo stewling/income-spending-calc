@@ -109,10 +109,12 @@ async function runTests() {
     modifiedState.members.push({ id: 'mem_custom', name: 'Alex Card', role: 'personal', color: '#f59e0b' });
     const assetAcc = modifiedState.savingsAccounts.find((a) => a.type === 'asset');
     assert.ok(assetAcc, 'Expected a seeded asset account');
+    assetAcc.icon = '🚙';
     modifiedState.entries.push(
       {
         id: 'test_inc_1',
         kind: 'income',
+        icon: '🚀',
         title: 'Test Side Gig',
         category: 'Freelance',
         memberId: 'mem_custom',
@@ -126,6 +128,7 @@ async function runTests() {
       {
         id: 'test_out_weekly',
         kind: 'outgoing',
+        icon: '🥦',
         title: 'Test Weekly Box',
         category: 'Groceries',
         memberId: 'mem_partner',
@@ -156,6 +159,7 @@ async function runTests() {
         id: 'test_stx_dep',
         accountId: modifiedState.savingsAccounts[0].id,
         memberId: 'mem_custom',
+        icon: '💎',
         type: 'deposit',
         frequency: 'one-off',
         amount: 425,
@@ -231,6 +235,10 @@ async function runTests() {
     assert.equal(reloadedJson.state.members.find((m) => m.id === 'mem_partner')?.name, 'Jordan Personal');
     assert.ok(reloadedJson.state.members.some((m) => m.id === 'mem_custom'));
     assert.equal(reloadedJson.state.entries.find((e) => e.id === 'test_inc_1')?.memberId, 'mem_custom');
+    assert.equal(reloadedJson.state.entries.find((e) => e.id === 'test_inc_1')?.icon, '🚀');
+    assert.equal(reloadedJson.state.entries.find((e) => e.id === 'test_out_weekly')?.icon, '🥦');
+    assert.equal(reloadedJson.state.savingsAccounts.find((a) => a.type === 'asset')?.icon, '🚙');
+    assert.equal(reloadedJson.state.savingsTransactions.find((t) => t.id === 'test_stx_dep')?.icon, '💎');
     assert.ok(reloadedJson.state.entries.some((e) => e.id === 'test_out_weekly'));
     assert.ok(reloadedJson.state.entries.some((e) => e.id === 'test_out_future'));
     assert.ok(reloadedJson.state.savingsTransactions.some((t) => t.id === 'test_stx_dep'));

@@ -40,6 +40,87 @@
     '#38bdf8', '#818cf8', '#10b981', '#f59e0b',
     '#f43f5e', '#a78bfa', '#06b6d4', '#fb7185', '#34d399'
   ];
+  const EMOJI_PRESETS = {
+    outgoing: ['🏠', '⚡', '💧', '🌐', '🛒', '🚗', '🛡️', '📺', '📱', '🧒', '🍔', '☕', '💊', '✈️', '🎁', '🛍️', '🔧', '💳', '🧾', '🐾'],
+    income: ['💼', '💷', '💰', '💻', '🎨', '🎉', '🧾', '📈', '📦', '🏆', '🤝', '🪙', '🏠', '🛠️', '✨', '🏦'],
+    savingsAccount: ['🏦', '📈', '💰', '🪙', '🏡', '🚗', '✈️', '🎓', '💍', '🛠️', '💎', '🚀', '🛡️', '🌴', '📦', '👶'],
+    savingsTx: ['🏦', '📈', '💰', '🪙', '✈️', '🏡', '🚗', '💸', '🔧', '⚖️', '🛡️', '🎁', '🏖️', '💳', '🆘', '✨']
+  };
+
+  function getEntryIcon(entry, overrideIcon = '') {
+    const custom = (overrideIcon || entry?.icon || '').trim();
+    if (custom) return custom;
+    const text = `${entry?.category || ''} ${entry?.title || ''}`.toLowerCase();
+    if (entry?.kind === 'income') {
+      if (/salary|wage|payroll|paycheck/.test(text)) return '💼';
+      if (/freelance|retainer|gig|design|consult/.test(text)) return '💻';
+      if (/bonus|award|prize/.test(text)) return '🎉';
+      if (/refund|rebate|hmrc|tax|cashback/.test(text)) return '🧾';
+      if (/dividend|interest|stock|share/.test(text)) return '📈';
+      if (/sell|sold|sale|vinted|ebay|clearout/.test(text)) return '📦';
+      return '💷';
+    }
+    if (/mortgage|rent|housing|property/.test(text)) return '🏠';
+    if (/council|tax|gov/.test(text)) return '🏛️';
+    if (/energy|gas|electric|power|fuel oil/.test(text)) return '⚡';
+    if (/water|sewer/.test(text)) return '💧';
+    if (/broadband|fibre|internet|wifi/.test(text)) return '🌐';
+    if (/mobile|phone|sim/.test(text)) return '📱';
+    if (/insur|cover|warranty/.test(text)) return '🛡️';
+    if (/stream|tv|netflix|spotify|disney|apple|cloud|sub/.test(text)) return '📺';
+    if (/grocer|supermarket|food|tesco|asda|aldi|lidl|sainsbury|waitrose/.test(text)) return '🛒';
+    if (/coffee|cafe|dining|restaurant|takeaway|pizza|eat/.test(text)) return '🍔';
+    if (/child|nursery|school|club|kids/.test(text)) return '🧒';
+    if (/car|mot|garage|petrol|diesel|ev|parking|rail|train|bus|commut|transport/.test(text)) return '🚗';
+    if (/dent|health|doctor|gym|fitness|swim|med|pharm/.test(text)) return '🏥';
+    if (/travel|holiday|flight|hotel|trip|weekend|vacation/.test(text)) return '✈️';
+    if (/gift|christmas|xmas|birthday|celebrat/.test(text)) return '🎁';
+    if (/shop|coat|cloth|shoe|amazon|gear/.test(text)) return '🛍️';
+    if (/boiler|repair|plumb|service|maint/.test(text)) return '🔧';
+    if (/pet|dog|cat|vet/.test(text)) return '🐾';
+    return '🧾';
+  }
+
+  function getSavingsAccountIcon(acc) {
+    const custom = (acc?.icon || '').trim();
+    if (custom) return custom;
+    const text = `${acc?.name || ''}`.toLowerCase();
+    if (/car|auto|vehicle|bike|van/.test(text)) return '🚗';
+    if (/holiday|travel|trip|flight|vacation/.test(text)) return '✈️';
+    if (/home|house|kitchen|garden|property|deposit/.test(text)) return '🏡';
+    if (/emerg|cushion|rainy/.test(text)) return '🏦';
+    if (/isa|stock|share|invest|pension|sipp/.test(text)) return '📈';
+    if (acc?.type === 'isa') return '📈';
+    if (acc?.type === 'investment') return '📊';
+    if (acc?.type === 'cash') return '🪙';
+    if (acc?.type === 'asset') return '🏡';
+    return '🏦';
+  }
+
+  function getSavingsTxIcon(tx, acc = null, overrideIcon = '') {
+    const custom = (overrideIcon || tx?.icon || '').trim();
+    if (custom) return custom;
+    if (tx?.type === 'withdrawal') return '💸';
+    if (tx?.type === 'adjustment') return '⚖️';
+    return acc ? getSavingsAccountIcon(acc) : '🏦';
+  }
+
+  function renderEmojiPicker(containerId, targetInputId, presets) {
+    const container = document.getElementById(containerId);
+    const input = document.getElementById(targetInputId);
+    if (!container || !input) return;
+    const current = input.value.trim();
+    container.innerHTML = presets.map((emoji) => `
+      <button
+        type="button"
+        class="emoji-pick-btn ${current === emoji ? 'active' : ''}"
+        data-pick-emoji="${escapeHtml(emoji)}"
+        data-target-input="${escapeHtml(targetInputId)}"
+        data-picker-id="${escapeHtml(containerId)}"
+        title="Use ${escapeHtml(emoji)}"
+      >${escapeHtml(emoji)}</button>
+    `).join('') + (current ? `<button type="button" class="icon-btn" style="padding:2px 7px;font-size:0.7rem;" data-pick-emoji="" data-target-input="${escapeHtml(targetInputId)}" data-picker-id="${escapeHtml(containerId)}" title="Clear custom icon (use auto)">Auto</button>` : '');
+  }
 
   // --- DATE & MONTH HELPERS ---
   function pad2(n) {
@@ -371,6 +452,7 @@
 
     const effectiveAmount = status === 'skipped' ? 0 : computedAmount;
     const memberId = override?.memberId || item.memberId || getMembers(state)[0]?.id;
+    const icon = (override?.icon !== undefined ? override.icon : item.icon || '').trim();
 
     return {
       month: monthStr,
@@ -385,6 +467,7 @@
       computedAmount,
       effectiveAmount,
       memberId,
+      icon,
       note: override?.note ?? item.notes ?? item.note ?? ''
     };
   }
@@ -966,10 +1049,13 @@
       ? `<span>Dates: ${r.occurrences.map((d) => d.slice(8)).join(', ')}</span>`
       : '';
 
+    const icon = getEntryIcon(e, r.icon);
+
     return `
       <div class="entry-row ${r.status === 'skipped' ? 'is-skipped' : ''}" data-entry-id="${escapeHtml(e.id)}">
         <div class="entry-main">
           <div class="entry-title-line">
+            <span class="item-icon-badge" aria-hidden="true">${escapeHtml(icon)}</span>
             <span class="entry-title">${escapeHtml(e.title)}</span>
             <span class="badge badge-${e.frequency}">${escapeHtml(r.scheduleLabel)}</span>
             ${renderMemberBadge(r.memberId)}
@@ -1423,10 +1509,11 @@
         const val = Number(runtime.plannedAllocations[acc.id] ?? 0);
         const bal = getAccountBalanceAtMonth(acc, summary.month);
         const typeTag = acc.type === 'asset' ? 'Asset' : (ACCOUNT_TYPE_LABELS[acc.type] || 'Savings');
+        const accIcon = getSavingsAccountIcon(acc);
         return `
           <div class="alloc-acc-row">
             <div class="alloc-acc-info">
-              <span class="alloc-acc-name">${escapeHtml(acc.name)}</span>
+              <span class="alloc-acc-name"><span style="margin-right:5px;">${escapeHtml(accIcon)}</span>${escapeHtml(acc.name)}</span>
               <span class="alloc-acc-sub">${escapeHtml(typeTag)} • Bal: ${escapeHtml(formatMoney(bal))} • Weight ${Number(acc.allocationWeight || 0)}%</span>
             </div>
             <input
@@ -1457,10 +1544,12 @@
     } else {
       snapEl.innerHTML = filteredAccounts.map((acc) => {
         const bal = getAccountBalanceAtMonth(acc, summary.month);
+        const accIcon = getSavingsAccountIcon(acc);
         return `
           <div class="snapshot-row">
             <div class="snapshot-left">
               <span class="swatch" style="background:${escapeHtml(acc.color || '#38bdf8')}"></span>
+              <span class="item-icon-badge" aria-hidden="true">${escapeHtml(accIcon)}</span>
               <div style="min-width:0">
                 <div class="alloc-acc-name">${escapeHtml(acc.name)}</div>
                 <div class="alloc-acc-sub">${escapeHtml(formatMoney(bal))} • ${escapeHtml(getMemberById(acc.memberId)?.name || 'Joint')}</div>
@@ -1513,11 +1602,13 @@
         ? `<span>Dates: ${r.occurrences.map((d) => d.slice(8)).join(', ')}</span>`
         : '';
       const typeLabel = tx.type === 'deposit' ? '+ Addition' : tx.type === 'withdrawal' ? '- Removal' : '± Adjust';
+      const stxIcon = getSavingsTxIcon(tx, acc, r.icon);
 
       return `
         <div class="entry-row ${r.status === 'skipped' ? 'is-skipped' : ''}" data-stx-id="${escapeHtml(tx.id)}">
           <div class="entry-main">
             <div class="entry-title-line">
+              <span class="item-icon-badge" aria-hidden="true">${escapeHtml(stxIcon)}</span>
               <span class="entry-title">${escapeHtml(acc ? acc.name : 'Savings / Asset')}</span>
               <span class="badge badge-${r.freq}">${escapeHtml(r.scheduleLabel)}</span>
               ${renderMemberBadge(r.memberId)}
@@ -1576,6 +1667,7 @@
         const recurringCount = (runtime.state.savingsTransactions || []).filter(
           (tx) => tx.accountId === acc.id && (tx.frequency === 'monthly' || tx.frequency === 'weekly') && isItemActiveInMonth(tx, summary.month)
         ).length;
+        const accIcon = getSavingsAccountIcon(acc);
 
         return `
           <article class="savings-card" style="border-top-color:${escapeHtml(acc.color || '#38bdf8')}">
@@ -1585,7 +1677,10 @@
                   <span class="badge badge-one-off">${escapeHtml(typeLabel)}</span>
                   ${renderMemberBadge(acc.memberId)}
                 </div>
-                <h3 class="savings-card-title" style="margin-top:7px;">${escapeHtml(acc.name)}</h3>
+                <h3 class="savings-card-title" style="margin-top:7px;display:flex;align-items:center;gap:8px;">
+                  <span class="item-icon-badge item-icon-lg" aria-hidden="true">${escapeHtml(accIcon)}</span>
+                  <span>${escapeHtml(acc.name)}</span>
+                </h3>
               </div>
               <button type="button" class="icon-btn" data-edit-sav-acc="${escapeHtml(acc.id)}">Edit</button>
             </div>
@@ -1732,7 +1827,7 @@
             return `
               <tr class="${r.status === 'skipped' ? 'is-skipped' : ''}">
                 <td>${escapeHtml(r.sortDate)}</td>
-                <td><strong>${escapeHtml(acc ? acc.name : 'Deleted Account')}</strong></td>
+                <td><span style="margin-right:6px;">${escapeHtml(getSavingsTxIcon(tx, acc, r.icon))}</span><strong>${escapeHtml(acc ? acc.name : 'Deleted Account')}</strong></td>
                 <td>${renderMemberBadge(r.memberId)}</td>
                 <td><span class="badge badge-${r.freq}">${escapeHtml(r.freq)}</span></td>
                 <td>${typeBadge}</td>
@@ -1861,6 +1956,7 @@
         if (e.category) categories.add(e.category);
         records.push({
           recordKind: e.kind,
+          icon: getEntryIcon(e, r.icon),
           month: m,
           horizon,
           dateLabel: e.date || (e.frequency === 'monthly' ? `${m}-${pad2(e.dayOfMonth || 1)}` : m),
@@ -1883,6 +1979,7 @@
         if (tx.category) categories.add(tx.category);
         records.push({
           recordKind: 'savings',
+          icon: getSavingsTxIcon(tx, acc, r.icon),
           month: m,
           horizon,
           dateLabel: tx.date || (r.freq === 'monthly' ? `${m}-${pad2(tx.dayOfMonth || 1)}` : m),
@@ -1905,6 +2002,7 @@
         categories.add('Account Transfer');
         records.push({
           recordKind: 'savings',
+          icon: '🔁',
           month: m,
           horizon,
           dateLabel: tr.date || (r.freq === 'monthly' ? `${m}-${pad2(tr.dayOfMonth || 1)}` : m),
@@ -2021,7 +2119,7 @@
               <tr>
                 <td><strong>${escapeHtml(formatMonthShort(rec.month))}</strong><br/><span class="text-muted" style="font-size:0.74rem;">${escapeHtml(rec.dateLabel)}</span></td>
                 <td><span class="month-pill-tag tag-${rec.horizon}">${horizonLabel}</span></td>
-                <td style="white-space:normal;min-width:190px;"><strong>${escapeHtml(rec.title)}</strong>${rec.note ? `<br/><span class="text-muted" style="font-size:0.74rem;">${escapeHtml(rec.note)}</span>` : ''}</td>
+                <td style="white-space:normal;min-width:190px;">${rec.icon ? `<span style="margin-right:6px;">${escapeHtml(rec.icon)}</span>` : ''}<strong>${escapeHtml(rec.title)}</strong>${rec.note ? `<br/><span class="text-muted" style="font-size:0.74rem;">${escapeHtml(rec.note)}</span>` : ''}</td>
                 <td>${renderMemberBadge(rec.memberId)}</td>
                 <td>${escapeHtml(rec.recordKind)}</td>
                 <td><span class="badge badge-${rec.frequency}">${escapeHtml(rec.frequency)}</span></td>
@@ -2079,6 +2177,16 @@
     const isEditing = Boolean(document.getElementById('entryIdInput').value);
     const isRecurring = runtime.entryModalFreq !== 'one-off';
     document.getElementById('entryEditScopeWrap').classList.toggle('hidden', !(isEditing && isRecurring));
+
+    const iconInput = document.getElementById('entryIconInput');
+    if (iconInput) {
+      iconInput.placeholder = runtime.entryModalKind === 'income' ? '💼' : '🧾';
+    }
+    renderEmojiPicker(
+      'entryEmojiPicker',
+      'entryIconInput',
+      runtime.entryModalKind === 'income' ? EMOJI_PRESETS.income : EMOJI_PRESETS.outgoing
+    );
   }
 
   function openEntryModal({ entryId = null, defaultKind = 'outgoing', defaultFreq = 'monthly', defaultMemberId = null } = {}) {
@@ -2100,6 +2208,7 @@
       runtime.entryModalKind = entry.kind;
       runtime.entryModalFreq = entry.frequency;
       document.getElementById('entryModalTitle').textContent = `Edit ${entry.kind === 'income' ? 'Income' : 'Outgoing'}`;
+      document.getElementById('entryIconInput').value = resolved.icon || entry.icon || '';
       document.getElementById('entryTitleInput').value = entry.title;
       document.getElementById('entryAmountInput').value = resolved.hasAmountOverride ? resolved.computedAmount : entry.amount;
       document.getElementById('entryCategoryInput').value = entry.category || '';
@@ -2120,6 +2229,7 @@
       runtime.entryModalFreq = defaultFreq;
       document.getElementById('entryModalTitle').textContent =
         defaultKind === 'income' ? 'Add Income' : 'Add Outgoing / Direct Debit';
+      document.getElementById('entryIconInput').value = '';
       document.getElementById('entryCategoryInput').value = defaultKind === 'income' ? 'Salary' : 'Bills & Utilities';
       document.getElementById('entryMemberSelect').value = fallbackMember;
       document.getElementById('entryOneOffMonthInput').value = runtime.selectedMonth;
@@ -2252,6 +2362,7 @@
       const acc = runtime.state.savingsAccounts.find((a) => a.id === accountId);
       if (!acc) return;
       document.getElementById('savingsAccountModalTitle').textContent = `Edit ${acc.name}`;
+      document.getElementById('savAccIconInput').value = acc.icon || '';
       document.getElementById('savAccNameInput').value = acc.name;
       document.getElementById('savAccTypeInput').value = acc.type || 'savings';
       document.getElementById('savAccMemberSelect').value = acc.memberId || fallbackMember;
@@ -2263,6 +2374,7 @@
       document.getElementById('savAccNotesInput').value = acc.notes || '';
     } else {
       document.getElementById('savingsAccountModalTitle').textContent = 'Add Savings Account or Asset';
+      document.getElementById('savAccIconInput').value = '';
       document.getElementById('savAccMemberSelect').value = fallbackMember;
       document.getElementById('savAccOpeningInput').value = '0';
       document.getElementById('savAccTargetInput').value = '0';
@@ -2270,6 +2382,7 @@
       document.getElementById('savAccWeightInput').value = '20';
       document.getElementById('savAccColorInput').value = '#10b981';
     }
+    renderEmojiPicker('savAccEmojiPicker', 'savAccIconInput', EMOJI_PRESETS.savingsAccount);
     openModal('savingsAccountModal');
     document.getElementById('savAccNameInput').focus();
   }
@@ -2341,6 +2454,7 @@
       runtime.stxModalFreq = tx.frequency || 'one-off';
       document.getElementById('savingsTxModalTitle').textContent = 'Edit Savings / Asset Payment';
       sel.value = tx.accountId;
+      document.getElementById('stxIconInput').value = resolved.icon || tx.icon || '';
       document.getElementById('stxMemberSelect').value = resolved.memberId || fallbackMember;
       document.getElementById('stxAmountInput').value = resolved.hasAmountOverride ? resolved.computedAmount : tx.amount;
       document.getElementById('stxCategoryInput').value = tx.category || '';
@@ -2358,6 +2472,7 @@
       runtime.stxModalType = type;
       runtime.stxModalFreq = freq;
       document.getElementById('savingsTxModalTitle').textContent = 'Add Savings / Asset Payment or Movement';
+      document.getElementById('stxIconInput').value = '';
       if (accountId && accounts.some((a) => a.id === accountId)) {
         sel.value = accountId;
       }
@@ -2381,6 +2496,7 @@
     }
 
     syncStxModalVisibility();
+    renderEmojiPicker('stxEmojiPicker', 'stxIconInput', EMOJI_PRESETS.savingsTx);
     openModal('savingsTxModal');
     document.getElementById('stxAmountInput').focus();
   }
@@ -2644,6 +2760,23 @@
       const selectThemeBtn = e.target.closest('[data-select-theme]');
       if (selectThemeBtn) {
         applyTheme(selectThemeBtn.dataset.selectTheme, { persist: true, toast: true });
+        return;
+      }
+
+      const pickEmojiBtn = e.target.closest('[data-pick-emoji]');
+      if (pickEmojiBtn) {
+        const targetId = pickEmojiBtn.dataset.targetInput;
+        const pickerId = pickEmojiBtn.dataset.pickerId;
+        const inp = document.getElementById(targetId);
+        if (inp) {
+          inp.value = pickEmojiBtn.dataset.pickEmoji;
+          const presets = pickerId === 'entryEmojiPicker'
+            ? (runtime.entryModalKind === 'income' ? EMOJI_PRESETS.income : EMOJI_PRESETS.outgoing)
+            : pickerId === 'savAccEmojiPicker'
+              ? EMOJI_PRESETS.savingsAccount
+              : EMOJI_PRESETS.savingsTx;
+          renderEmojiPicker(pickerId, targetId, presets);
+        }
         return;
       }
 
@@ -3011,6 +3144,20 @@
     });
 
     // Entry modal segmented buttons & submit
+    document.getElementById('entryIconInput').addEventListener('input', () => {
+      renderEmojiPicker(
+        'entryEmojiPicker',
+        'entryIconInput',
+        runtime.entryModalKind === 'income' ? EMOJI_PRESETS.income : EMOJI_PRESETS.outgoing
+      );
+    });
+    document.getElementById('savAccIconInput').addEventListener('input', () => {
+      renderEmojiPicker('savAccEmojiPicker', 'savAccIconInput', EMOJI_PRESETS.savingsAccount);
+    });
+    document.getElementById('stxIconInput').addEventListener('input', () => {
+      renderEmojiPicker('stxEmojiPicker', 'stxIconInput', EMOJI_PRESETS.savingsTx);
+    });
+
     document.querySelectorAll('[data-entry-kind]').forEach((btn) => {
       btn.addEventListener('click', () => {
         runtime.entryModalKind = btn.dataset.entryKind;
@@ -3028,6 +3175,7 @@
     document.getElementById('entryForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const entryId = document.getElementById('entryIdInput').value;
+      const icon = document.getElementById('entryIconInput').value.trim().slice(0, 16);
       const title = document.getElementById('entryTitleInput').value.trim();
       const amount = Number(document.getElementById('entryAmountInput').value);
       const category = document.getElementById('entryCategoryInput').value.trim() || 'General';
@@ -3059,6 +3207,7 @@
             status,
             amount,
             memberId,
+            icon,
             note: notes,
             updatedAt: new Date().toISOString()
           };
@@ -3069,6 +3218,7 @@
 
         existing.kind = kind;
         existing.frequency = freq;
+        existing.icon = icon;
         existing.title = title;
         existing.amount = amount;
         existing.category = category;
@@ -3133,6 +3283,7 @@
       runtime.state.entries.push({
         id: newId,
         kind,
+        icon,
         title,
         category,
         memberId,
@@ -3369,6 +3520,7 @@
     document.getElementById('savingsAccountForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const id = document.getElementById('savAccIdInput').value;
+      const icon = document.getElementById('savAccIconInput').value.trim().slice(0, 16);
       const name = document.getElementById('savAccNameInput').value.trim();
       const type = document.getElementById('savAccTypeInput').value;
       const memberId = document.getElementById('savAccMemberSelect').value || getMembers()[0]?.id;
@@ -3384,12 +3536,13 @@
       if (id) {
         const acc = runtime.state.savingsAccounts.find((a) => a.id === id);
         if (!acc) return;
-        Object.assign(acc, { name, type, memberId, openingBalance, targetAmount, interestRate, allocationWeight, color, notes });
+        Object.assign(acc, { icon, name, type, memberId, openingBalance, targetAmount, interestRate, allocationWeight, color, notes });
         closeModal('savingsAccountModal');
         persistChange(`Updated "${name}"`);
       } else {
         runtime.state.savingsAccounts.push({
           id: uid('sav'),
+          icon,
           name,
           type,
           memberId,
@@ -3424,6 +3577,7 @@
     document.getElementById('savingsTxForm').addEventListener('submit', (e) => {
       e.preventDefault();
       const txId = document.getElementById('stxIdInput').value;
+      const icon = document.getElementById('stxIconInput').value.trim().slice(0, 16);
       const accountId = document.getElementById('stxAccountSelect').value;
       const memberId = document.getElementById('stxMemberSelect').value || getMembers()[0]?.id;
       const rawAmount = Number(document.getElementById('stxAmountInput').value);
@@ -3455,6 +3609,7 @@
             status,
             amount,
             memberId,
+            icon,
             note,
             updatedAt: new Date().toISOString()
           };
@@ -3465,6 +3620,7 @@
 
         existing.accountId = accountId;
         existing.memberId = memberId;
+        existing.icon = icon;
         existing.type = type;
         existing.frequency = freq;
         existing.amount = amount;
@@ -3531,6 +3687,7 @@
         id: newId,
         accountId,
         memberId,
+        icon,
         type,
         frequency: freq,
         amount,

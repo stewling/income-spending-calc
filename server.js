@@ -71,18 +71,23 @@ function normalizeState(raw) {
   const validMemberIds = new Set(members.map((m) => m.id));
   const fallbackMemberId = members[0].id;
 
+  const sanitizeIcon = (icon) => (typeof icon === 'string' ? icon.trim().slice(0, 16) : '');
+
   const entries = (Array.isArray(raw.entries) ? raw.entries : []).map((e) => ({
     ...e,
+    icon: sanitizeIcon(e?.icon),
     memberId: e && validMemberIds.has(e.memberId) ? e.memberId : fallbackMemberId
   }));
 
   const savingsAccounts = (Array.isArray(raw.savingsAccounts) ? raw.savingsAccounts : []).map((a) => ({
     ...a,
+    icon: sanitizeIcon(a?.icon),
     memberId: a && validMemberIds.has(a.memberId) ? a.memberId : fallbackMemberId
   }));
 
   const savingsTransactions = (Array.isArray(raw.savingsTransactions) ? raw.savingsTransactions : []).map((tx) => ({
     ...tx,
+    icon: sanitizeIcon(tx?.icon),
     frequency: ['one-off', 'weekly', 'monthly'].includes(tx?.frequency) ? tx.frequency : 'one-off',
     memberId: tx && validMemberIds.has(tx.memberId) ? tx.memberId : fallbackMemberId
   }));

@@ -69,6 +69,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'inc_primary_salary',
       kind: 'income',
+      icon: '💼',
       title: 'Primary Household Salary',
       category: 'Salary',
       frequency: 'monthly',
@@ -87,6 +88,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'inc_partner_salary',
       kind: 'income',
+      icon: '💼',
       title: 'Partner Monthly Salary',
       category: 'Salary',
       frequency: 'monthly',
@@ -106,6 +108,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'inc_weekly_freelance',
       kind: 'income',
+      icon: '🎨',
       title: 'Weekend Design Retainer',
       category: 'Freelance',
       frequency: 'weekly',
@@ -125,6 +128,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'inc_oneoff_tax_rebate',
       kind: 'income',
+      icon: '🧾',
       title: 'HMRC Tax Rebate',
       category: 'Refund / Rebate',
       frequency: 'one-off',
@@ -143,6 +147,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'inc_oneoff_vinted',
       kind: 'income',
+      icon: '📦',
       title: 'Spare Room Clearout Sales',
       category: 'Side Income',
       frequency: 'one-off',
@@ -161,6 +166,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'inc_oneoff_year_bonus',
       kind: 'income',
+      icon: '🎉',
       title: 'Annual Performance Bonus',
       category: 'Bonus',
       frequency: 'one-off',
@@ -181,6 +187,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_dd_mortgage',
       kind: 'outgoing',
+      icon: '🏠',
       title: 'Mortgage / Rent Direct Debit',
       category: 'Housing',
       frequency: 'monthly',
@@ -199,6 +206,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_dd_council_tax',
       kind: 'outgoing',
+      icon: '🏛️',
       title: 'Council Tax DD',
       category: 'Bills & Utilities',
       frequency: 'monthly',
@@ -217,6 +225,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_dd_energy',
       kind: 'outgoing',
+      icon: '⚡',
       title: 'Gas & Electricity Direct Debit',
       category: 'Bills & Utilities',
       frequency: 'monthly',
@@ -235,6 +244,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_dd_water',
       kind: 'outgoing',
+      icon: '💧',
       title: 'Water Utility DD',
       category: 'Bills & Utilities',
       frequency: 'monthly',
@@ -253,6 +263,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_dd_broadband',
       kind: 'outgoing',
+      icon: '🌐',
       title: 'Fibre Broadband & Mobile DD',
       category: 'Subscriptions & Telecoms',
       frequency: 'monthly',
@@ -271,6 +282,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_dd_home_ins',
       kind: 'outgoing',
+      icon: '🛡️',
       title: 'Home & Contents Insurance DD',
       category: 'Insurance',
       frequency: 'monthly',
@@ -289,6 +301,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_dd_streaming',
       kind: 'outgoing',
+      icon: '📺',
       title: 'Streaming & Cloud Bundle',
       category: 'Subscriptions & Telecoms',
       frequency: 'monthly',
@@ -309,6 +322,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_wdd_groceries',
       kind: 'outgoing',
+      icon: '🛒',
       title: 'Weekly Supermarket Delivery DD',
       category: 'Groceries',
       frequency: 'weekly',
@@ -327,6 +341,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_wdd_childcare',
       kind: 'outgoing',
+      icon: '🧒',
       title: 'Weekly Clubs & Childcare DD',
       category: 'Family & Childcare',
       frequency: 'weekly',
@@ -345,6 +360,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_wdd_fuel_gym',
       kind: 'outgoing',
+      icon: '🚆',
       title: 'Weekly Transport & Fitness Pot DD',
       category: 'Transport & Health',
       frequency: 'weekly',
@@ -365,6 +381,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_summer_trip',
       kind: 'outgoing',
+      icon: '🏖️',
       title: 'Summer Coastal Weekend',
       category: 'Leisure & Travel',
       frequency: 'one-off',
@@ -383,6 +400,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_school_uniform',
       kind: 'outgoing',
+      icon: '👟',
       title: 'Autumn Gear & Shoes',
       category: 'Shopping',
       frequency: 'one-off',
@@ -401,6 +419,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_boiler',
       kind: 'outgoing',
+      icon: '🔧',
       title: 'Annual Boiler Service',
       category: 'Housing',
       frequency: 'one-off',
@@ -419,6 +438,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_car_mot',
       kind: 'outgoing',
+      icon: '🚗',
       title: 'Car MOT & Full Service',
       category: 'Transport & Health',
       frequency: 'one-off',
@@ -437,6 +457,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_winter_coat',
       kind: 'outgoing',
+      icon: '🧥',
       title: 'Winter Waterproof Coat & Boots',
       category: 'Shopping',
       frequency: 'one-off',
@@ -455,6 +476,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_christmas',
       kind: 'outgoing',
+      icon: '🎁',
       title: 'Christmas Gifts & Family Hosting',
       category: 'Gifts & Celebrations',
       frequency: 'one-off',
@@ -473,6 +495,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_car_ins',
       kind: 'outgoing',
+      icon: '🛡️',
       title: 'Annual Car Insurance Renewal',
       category: 'Insurance',
       frequency: 'one-off',
@@ -491,6 +514,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_dentist',
       kind: 'outgoing',
+      icon: '🦷',
       title: 'Dental Checkup & Hygiene',
       category: 'Transport & Health',
       frequency: 'one-off',
@@ -509,6 +533,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'out_oneoff_spring_holiday',
       kind: 'outgoing',
+      icon: '✈️',
       title: 'Spring Holiday Flight Deposit',
       category: 'Leisure & Travel',
       frequency: 'one-off',
@@ -543,6 +568,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'sav_emergency',
       name: 'Emergency Fund (Easy Access)',
+      icon: '🏦',
       type: 'savings',
       memberId: 'mem_joint',
       openingBalance: 7400,
@@ -556,6 +582,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'sav_isa',
       name: 'Stocks & Shares ISA',
+      icon: '📈',
       type: 'isa',
       memberId: 'mem_mine',
       openingBalance: 14200,
@@ -569,6 +596,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'sav_holiday',
       name: 'Holiday & Travel Pot',
+      icon: '✈️',
       type: 'cash',
       memberId: 'mem_partner',
       openingBalance: 1150,
@@ -582,6 +610,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'sav_home',
       name: 'Home Improvement Reserve',
+      icon: '🏡',
       type: 'savings',
       memberId: 'mem_joint',
       openingBalance: 3200,
@@ -595,6 +624,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
     {
       id: 'asset_family_car',
       name: 'Family Car (Estimated Asset)',
+      icon: '🚗',
       type: 'asset',
       memberId: 'mem_joint',
       openingBalance: 11500,
@@ -817,6 +847,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'stx_monthly_emergency',
       accountId: 'sav_emergency',
       memberId: 'mem_joint',
+      icon: '🏦',
       type: 'deposit',
       frequency: 'monthly',
       amount: 200,
@@ -834,6 +865,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'stx_weekly_holiday',
       accountId: 'sav_holiday',
       memberId: 'mem_partner',
+      icon: '✈️',
       type: 'deposit',
       frequency: 'weekly',
       amount: 30,
@@ -851,6 +883,7 @@ function createSeedState(anchorMonth = getCurrentMonth()) {
       id: 'stx_monthly_car_asset',
       accountId: 'asset_family_car',
       memberId: 'mem_mine',
+      icon: '🚗',
       type: 'deposit',
       frequency: 'monthly',
       amount: 120,

@@ -11,6 +11,7 @@ A **local-first, self-hosted rolling monthly income, outgoings, direct debits, a
 - **Multi-Device LAN & Remote Sync:** Real-time Server-Sent Events (`GET /api/events`) keep every connected browser tab and mobile device synchronized automatically.
 - **Joint & Personal Account Bill Coverage & Allocations:** Allocate money from personal accounts (`My Account`, `Partner Account`, etc.) into the `Joint Account` via monthly, weekly, or one-off transfers, and see exact bill coverage, shortfalls, and surpluses for both personal and joint accounts.
 - **Site-Wide Household Member / Payer Account Labeling & Renaming:** Set up, color-code, and rename personal and joint accounts at any time, label every income, bill, savings pot, and asset with who pays or owns it, and filter any view by account.
+- **Custom Icons & Emojis on Every Item:** Pick or type custom emojis on any outgoing, direct debit, income, savings pot, asset, or savings payment (with automatic smart defaults across the whole site).
 - **10 On-the-Fly Color Themes:** Switch seamlessly without reloading between `Dark (Midnight)`, `Dark OLED`, `Light Daylight`, `Dracula`, `Emerald Forest`, `Synthwave Neon`, `Nordic Frost`, `Sunset Amber`, `Deep Ocean`, and `Rosé Pine`.
 - **Rolling Monthly Engine:** Seamlessly browse past saved months, the current month, and future scheduled months side-by-side—with weekly direct debits, monthly direct debits, one-off payments, and recurring/one-off savings & asset tracking.
 - **Zero-Dependency Docker Image:** Runs cleanly on `node:24-alpine` exposed on port `5025` with persistent `/app/data` volume storage.
@@ -110,8 +111,9 @@ Switch instantly via the header dropdown or open the visual **Choose Site Theme*
     - *Monthly average (`×52÷12`)*
   - **One-Off Payments & Incomes:** Scheduled for any past, current, or future month with optional exact date.
 - **Per-Month Overrides & Non-Destructive Stopping:**
-  - Edit a recurring direct debit across all active months **or** override the amount/member/notes for a single month only.
+  - Edit a recurring direct debit across all active months **or** override the amount/member/icon/notes for a single month only.
   - Remove a recurring direct debit by choosing **"Stop from this month onwards (keep past history)"** or **"Delete completely from all months"**.
+- **Custom Icons & Emojis:** Pick from quick emoji presets or type any custom emoji for each income, direct debit, or one-off payment (`🧾`, `🏠`, `⚡`, `🛒`, `💼`, etc.), with smart automatic category icons if left blank.
 - **One-Click Status Cycling:** Toggle any item between `Paid / Received`, `Upcoming`, and `Skipped` for the viewed month.
 
 ### 3. Joint & Personal Account Bill Coverage, Member Accounts & Transfers
@@ -133,8 +135,8 @@ Switch instantly via the header dropdown or open the visual **Choose Site Theme*
   - Click **Transfer Planned Allocation to Savings & Assets** to log labeled deposit entries straight into your savings ledger.
 
 ### 4. Savings Accounts, Assets & Recurring Payments
-- **Track Cash & Physical Assets Together:** Supports `Savings Account`, `ISA / Tax-Free Savings`, `Investment / Shares`, `Cash / Sinking Pot`, and `Physical Asset / Property` with owner badges and goal progress bars.
-- **Monthly, Weekly & One-Off Savings / Asset Payments:** Schedule recurring **Monthly** standing orders, **Weekly** transfer rules, or **One-Off** additions, removals, and valuation adjustments for any savings account or asset—with per-month overrides, `Paid`/`Upcoming`/`Skipped` status toggles, and non-destructive stopping ("Stop from this month onwards").
+- **Track Cash & Physical Assets Together:** Supports `Savings Account`, `ISA / Tax-Free Savings`, `Investment / Shares`, `Cash / Sinking Pot`, and `Physical Asset / Property` with custom emojis/icons (`🏦`, `📈`, `🚗`, `🏡`, `✈️`), owner badges, and goal progress bars.
+- **Monthly, Weekly & One-Off Savings / Asset Payments:** Schedule recurring **Monthly** standing orders, **Weekly** transfer rules, or **One-Off** additions, removals, and valuation adjustments for any savings account or asset—with custom icons/emojis, per-month overrides, `Paid`/`Upcoming`/`Skipped` status toggles, and non-destructive stopping ("Stop from this month onwards").
 - **Quick Balance Actions:** Use **`+ Add Money`**, **`- Remove`**, **`Allocate`**, and **`Adjust`** directly on any savings or asset card.
 - **Savings & Asset Change History:** Filterable chronological ledger by account, member, schedule frequency (`Monthly`, `Weekly`, `One-Off`), month scope, movement type, and search notes.
 

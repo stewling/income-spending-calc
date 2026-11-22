@@ -562,7 +562,11 @@
           </div>
         </div>
 
-        <div class="form-grid-2">
+        <div class="form-grid-icon">
+          <div class="field-group">
+            <label for="entryIconInput">Icon / Emoji</label>
+            <input type="text" id="entryIconInput" class="input-icon" maxlength="12" placeholder="🧾" aria-label="Item icon or emoji" />
+          </div>
           <div class="field-group">
             <label for="entryTitleInput">Name / Description *</label>
             <input type="text" id="entryTitleInput" required placeholder="e.g. Council Tax, Weekly Shop, Car Service" />
@@ -572,6 +576,7 @@
             <input type="number" id="entryAmountInput" required min="0.01" step="0.01" placeholder="0.00" />
           </div>
         </div>
+        <div id="entryEmojiPicker" class="emoji-picker-strip" aria-label="Quick emoji picker"></div>
 
         <div class="form-grid-3">
           <div class="field-group">
@@ -726,7 +731,11 @@
       </div>
       <form id="savingsAccountForm" class="modal-body">
         <input type="hidden" id="savAccIdInput" />
-        <div class="form-grid-2">
+        <div class="form-grid-icon">
+          <div class="field-group">
+            <label for="savAccIconInput">Icon / Emoji</label>
+            <input type="text" id="savAccIconInput" class="input-icon" maxlength="12" placeholder="🏦" aria-label="Account or asset icon" />
+          </div>
           <div class="field-group">
             <label for="savAccNameInput">Account / Asset Name *</label>
             <input type="text" id="savAccNameInput" required placeholder="e.g. Emergency Fund, House Equity, Cash ISA" />
@@ -742,6 +751,7 @@
             </select>
           </div>
         </div>
+        <div id="savAccEmojiPicker" class="emoji-picker-strip" aria-label="Quick emoji picker"></div>
 
         <div class="form-grid-2">
           <div class="field-group">
@@ -834,7 +844,11 @@
           </div>
         </div>
 
-        <div class="form-grid-2">
+        <div class="form-grid-icon">
+          <div class="field-group">
+            <label for="stxIconInput">Icon / Emoji</label>
+            <input type="text" id="stxIconInput" class="input-icon" maxlength="12" placeholder="🪙" aria-label="Payment icon or emoji" />
+          </div>
           <div class="field-group">
             <label for="stxAmountInput" id="stxAmountLabel">Amount *</label>
             <input type="number" id="stxAmountInput" required step="0.01" placeholder="0.00" />
@@ -855,6 +869,7 @@
             </datalist>
           </div>
         </div>
+        <div id="stxEmojiPicker" class="emoji-picker-strip" aria-label="Quick emoji picker"></div>
 
         <!-- CONDITIONAL SCHEDULE FIELDS FOR SAVINGS/ASSET -->
         <div id="stxOneOffFields" class="schedule-box">
