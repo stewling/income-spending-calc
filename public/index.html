@@ -29,7 +29,6 @@
         </div>
         <div>
           <h1 id="householdTitle">Household Finance Hub</h1>
-          <p class="brand-sub">Local-first rolling monthly cashflow, direct debits &amp; savings</p>
         </div>
       </div>
 
@@ -85,6 +84,21 @@
 
     <!-- ROLLING MONTH NAVIGATOR -->
     <section class="month-navigator" aria-label="Rolling monthly navigation">
+      <div class="mobile-month-bar">
+        <button type="button" id="btnMobilePrevMonth" class="btn btn-ghost btn-mobile-step" title="Previous month" aria-label="Previous month">
+          &#8592; Prev
+        </button>
+        <div class="mobile-month-select-wrap">
+          <select id="mobileMonthSelect" class="mobile-month-select" aria-label="Select past, current, or future month"></select>
+        </div>
+        <button type="button" id="btnMobileTodayMonth" class="btn btn-ghost btn-sm btn-mobile-today" title="Jump to current month">
+          Today
+        </button>
+        <button type="button" id="btnMobileNextMonth" class="btn btn-ghost btn-mobile-step" title="Next month" aria-label="Next month">
+          Next &#8594;
+        </button>
+      </div>
+
       <div class="month-nav-row">
         <button type="button" id="btnPrevMonth" class="btn btn-ghost btn-nav" title="Previous month">
           &#8592; Prev
@@ -526,6 +540,10 @@
         <div id="globalSearchResultsWrap" class="table-wrap"></div>
       </section>
     </section>
+
+    <footer class="app-footer">
+      <span>Vibecoded with Google Antigravity</span>
+    </footer>
   </div>
 
   <!-- MODAL: ADD / EDIT INCOME OR OUTGOING -->
@@ -1203,6 +1221,20 @@
 
   <!-- TOAST NOTIFICATION -->
   <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- FLOATING SCROLL TO TOP BUTTON -->
+  <button
+    type="button"
+    id="btnScrollTop"
+    class="scroll-top-fab"
+    title="Scroll to top"
+    aria-label="Scroll to top"
+  >
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M12 19V5" />
+      <path d="M5 12l7-7 7 7" />
+    </svg>
+  </button>
 
   <script src="/app.js"></script>
 </body>

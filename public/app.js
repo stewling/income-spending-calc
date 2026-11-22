@@ -1076,6 +1076,18 @@
     populateMemberSelects();
   }
 
+  function centerActiveMonthPill() {
+    const strip = document.getElementById('rollingMonthStrip');
+    if (!strip) return;
+    const activePill = strip.querySelector('.month-pill.active');
+    if (!activePill) return;
+    const targetLeft = Math.max(
+      0,
+      Math.round(activePill.offsetLeft - (strip.clientWidth - activePill.offsetWidth) / 2)
+    );
+    strip.scrollLeft = targetLeft;
+  }
+
   function renderMonthNavigator() {
     const strip = document.getElementById('rollingMonthStrip');
     const currentMonth = getCurrentMonth();
@@ -1101,6 +1113,31 @@
     }
 
     strip.innerHTML = pills.join('');
+    centerActiveMonthPill();
+    window.requestAnimationFrame(centerActiveMonthPill);
+
+    const mobileSelect = document.getElementById('mobileMonthSelect');
+    if (mobileSelect) {
+      const optionMonths = [];
+      for (let offset = -12; offset <= 12; offset++) {
+        optionMonths.push(shiftMonth(currentMonth, offset));
+      }
+      if (!optionMonths.includes(runtime.selectedMonth)) {
+        optionMonths.push(runtime.selectedMonth);
+        optionMonths.sort();
+      }
+      mobileSelect.innerHTML = optionMonths.map((m) => {
+        const h = getHorizon(m, currentMonth);
+        const hLabel = h === 'current' ? 'Now' : h === 'past' ? 'Past' : 'Future';
+        return `<option value="${escapeHtml(m)}">${escapeHtml(formatMonthShort(m))} • ${hLabel}</option>`;
+      }).join('');
+      mobileSelect.value = runtime.selectedMonth;
+    }
+
+    const mobileTodayBtn = document.getElementById('btnMobileTodayMonth');
+    if (mobileTodayBtn) {
+      mobileTodayBtn.classList.toggle('is-away', runtime.selectedMonth !== currentMonth);
+    }
 
     const horizon = getHorizon(runtime.selectedMonth, currentMonth);
     const badge = document.getElementById('selectedMonthBadge');
@@ -2821,32 +2858,38 @@
     document.getElementById('btnAddMemberTransfer').addEventListener('click', () => openMemberTransferModal({ defaultFreq: 'monthly' }));
 
     // Rolling Month Navigation
-    document.getElementById('btnPrevMonth').addEventListener('click', () => {
-      runtime.selectedMonth = shiftMonth(runtime.selectedMonth, -1);
+    function selectMonth(targetMonth) {
+      if (!targetMonth) return;
+      runtime.selectedMonth = targetMonth;
       runtime.plannedAllocations = {};
       runtime.plannedJointTransfers = {};
       renderAll();
+    }
+
+    document.getElementById('btnPrevMonth').addEventListener('click', () => {
+      selectMonth(shiftMonth(runtime.selectedMonth, -1));
     });
     document.getElementById('btnNextMonth').addEventListener('click', () => {
-      runtime.selectedMonth = shiftMonth(runtime.selectedMonth, 1);
-      runtime.plannedAllocations = {};
-      runtime.plannedJointTransfers = {};
-      renderAll();
+      selectMonth(shiftMonth(runtime.selectedMonth, 1));
     });
     document.getElementById('btnTodayMonth').addEventListener('click', () => {
-      runtime.selectedMonth = getCurrentMonth();
-      runtime.plannedAllocations = {};
-      runtime.plannedJointTransfers = {};
-      renderAll();
+      selectMonth(getCurrentMonth());
     });
     document.getElementById('monthPickerInput').addEventListener('change', (e) => {
-      if (e.target.value) {
-        runtime.selectedMonth = e.target.value;
-        runtime.plannedAllocations = {};
-        runtime.plannedJointTransfers = {};
-        renderAll();
-      }
+      selectMonth(e.target.value);
     });
+
+    const btnMobilePrev = document.getElementById('btnMobilePrevMonth');
+    const btnMobileNext = document.getElementById('btnMobileNextMonth');
+    const btnMobileToday = document.getElementById('btnMobileTodayMonth');
+    const mobileMonthSelect = document.getElementById('mobileMonthSelect');
+    if (btnMobilePrev) btnMobilePrev.addEventListener('click', () => selectMonth(shiftMonth(runtime.selectedMonth, -1)));
+    if (btnMobileNext) btnMobileNext.addEventListener('click', () => selectMonth(shiftMonth(runtime.selectedMonth, 1)));
+    if (btnMobileToday) btnMobileToday.addEventListener('click', () => selectMonth(getCurrentMonth()));
+    if (mobileMonthSelect) {
+      mobileMonthSelect.addEventListener('change', (e) => selectMonth(e.target.value));
+    }
+    window.addEventListener('resize', centerActiveMonthPill, { passive: true });
 
     // Outgoing filter chips
     document.getElementById('outgoingFilterChips').addEventListener('click', (e) => {
@@ -4016,6 +4059,19 @@
         if (e.target === backdrop) backdrop.classList.add('hidden');
       });
     });
+
+    // Floating scroll-to-top button
+    const btnScrollTop = document.getElementById('btnScrollTop');
+    if (btnScrollTop) {
+      btnScrollTop.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      });
+      window.addEventListener('scroll', () => {
+        btnScrollTop.classList.toggle('is-scrolled', window.scrollY > 120);
+      }, { passive: true });
+    }
   }
 
   // --- BOOTSTRAP ---
